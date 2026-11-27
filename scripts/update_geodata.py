@@ -112,12 +112,14 @@ def save_compact_geojson(path: Path, data: Dict[str, Any], max_kb: int = 490) ->
     serialized = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     size_kb = len(serialized.encode("utf-8")) / 1024.0
 
-    # Als het bestand groter is dan max_kb, vereenvoudig met een iets grovere tolerantie
-    if size_kb > max_kb and "features" in data:
-        logger.info("Bestand %s is %.1f KB (> %d KB), extra Douglas-Peucker vereenvoudiging toepassen...", path.name, size_kb, max_kb)
+    # Als het bestand groter is dan max_kb, vereenvoudig stapsgewijs tot onder max_kb
+    for tol, prec in ((0.0020, 4), (0.0035, 4), (0.0045, 3)):
+        if size_kb <= max_kb or "features" not in data:
+            break
+        logger.info("Bestand %s is %.1f KB (> %d KB), Douglas-Peucker (tol=%.4f, prec=%d) toepassen...", path.name, size_kb, max_kb, tol, prec)
         for feat in data["features"]:
             if feat.get("geometry"):
-                feat["geometry"] = simplify_geometry(feat["geometry"], tolerance=0.0022, precision=4)
+                feat["geometry"] = simplify_geometry(feat["geometry"], tolerance=tol, precision=prec)
         serialized = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
         size_kb = len(serialized.encode("utf-8")) / 1024.0
 
@@ -221,7 +223,13 @@ def enrich_natura2000(stilte_fc: Dict[str, Any]) -> None:
             or str(idx + 1)
         )
         gebiedsnummer = str(nr_raw).lstrip("0") or str(nr_raw)
-        naam = props.get("naam") or props.get("NAAM") or props.get("naam_n2k") or f"Natura 2000 #{gebiedsnummer}"
+        naam = (
+            props.get("naamN2K")
+            or props.get("naam_n2k")
+            or props.get("naam")
+            or props.get("NAAM")
+            or f"Natura 2000 #{gebiedsnummer}"
+        )
 
         # Spatial Join met Stiltegebieden
         overlaps_stilte = bool(props.get("stiltegebied", False))
@@ -238,7 +246,10 @@ def enrich_natura2000(stilte_fc: Dict[str, Any]) -> None:
                 pass
 
         override = overrides_map.get(gebiedsnummer, {})
-        status = override.get("status", props.get("status", "caution"))
+        existing_status = props.get("status")
+        if existing_status not in ("forbidden", "caution", "free"):
+            existing_status = "caution"
+        status = override.get("status", existing_status)
         if overlaps_stilte:
             status = "forbidden"
 
