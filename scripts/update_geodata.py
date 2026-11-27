@@ -481,8 +481,22 @@ def enrich_natura2000() -> Dict[str, Any]:
         staatscour = str(props.get("staatscour") or "").strip()
         bron_info = f" [{besluit_txt}, Stcrt. {staatscour}]" if ("besluit" in besluit_txt.lower() and staatscour) else ""
 
+        water_keywords = (
+            "zee", "kustzone", "voordelta", "delta", "estuarium", "schel", "grevelingen",
+            "krammer", "volkerak", "haringvliet", "hollandsch diep", "ketelmeer", "zwarte meer",
+            "veerse meer", "eems", "dollard", "friese front", "doggersbank", "klaverbank", "bruine bank",
+            "zoommeer", "markiezaat", "ijmeer", "markermeer", "ijsselmeer", "randmeren", "waddenzee"
+        )
+        is_water_area = any(k in str(naam).lower() for k in water_keywords)
+
         if override.get("mini2se_toelichting"):
             toelichting = f"{override['mini2se_toelichting']}{bron_info}"
+        elif is_water_area:
+            toelichting = (
+                f"<strong>Vliegen:</strong> Ja, toegestaan boven open water (geen algemeen droneverbod in het Natura 2000-besluit van {naam}).<br>"
+                "<strong>Opstijgen:</strong> Toegestaan vanaf openbare stranden, dijken en kades (of vanaf een boot); niet vanaf afgesloten vogelbroedstranden.<br>"
+                f"<strong>Afstand houden:</strong> Min. 100–150m van rustende watervogels, broedkolonies en zeehonden.{bron_info}"
+            )
         elif "VR" in bescherming:
             toelichting = (
                 f"<strong>Vliegen:</strong> Ja, toegestaan (geen vliegverbod in het Natura 2000-besluit van {naam}).<br>"
@@ -502,7 +516,8 @@ def enrich_natura2000() -> Dict[str, Any]:
         import urllib.parse
         default_n2k_url = f"https://www.natura2000.nl/zoeken?search_api_fulltext={urllib.parse.quote(str(naam))}"
         url = override.get("url") or props.get("url") or default_n2k_url
-        beheerder = override.get("beheerder") or props.get("beheerder") or "Staatsbosbeheer / Natuurmonumenten / Provincie"
+        default_beheerder = "Rijkswaterstaat" if is_water_area else "Staatsbosbeheer / Natuurmonumenten / Provincie"
+        beheerder = override.get("beheerder") or props.get("beheerder") or default_beheerder
 
         enriched_features.append({
             "type": "Feature",
