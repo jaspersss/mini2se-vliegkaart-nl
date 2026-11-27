@@ -907,6 +907,20 @@
         const allVlos = [...infraHits, ...warningHitsInVlos.slice(0, 2)];
         relevantTitles.push(`In 500m VLOS-cirkel: ${allVlos.join(", ")}`);
       }
+
+      // 8. A3 150m bebouwingscheck via OpenStreetMap vector-tiles (alleen voor A3-drones)
+      if (state.selectedDrone.openCat === "A3" && typeof map !== "undefined" && map.getZoom && map.getZoom() >= 12) {
+        try {
+          const [cLng, cLat] = lngLat;
+          const sw150 = map.project([cLng - 0.0022, cLat - 0.00135]);
+          const ne150 = map.project([cLng + 0.0022, cLat + 0.00135]);
+          const bbox150 = [[Math.min(sw150.x, ne150.x), Math.min(sw150.y, ne150.y)], [Math.max(sw150.x, ne150.x), Math.max(sw150.y, ne150.y)]];
+          const bld = map.getLayer("infra-buildings") ? map.queryRenderedFeatures(bbox150, { layers: ["infra-buildings"] }) : [];
+          if (bld.length > 0) {
+            relevantTitles.push("⚠️ A3: Bebouwing binnen 150m!");
+          }
+        } catch (_) {}
+      }
       const subline = relevantTitles.join(" • ");
 
       return {
@@ -1099,6 +1113,16 @@
         minzoom: 10.5,
         filter: ["==", ["get", "class"], "rail"],
         paint: { "line-color": "#ffffff", "line-width": 1.8, "line-dasharray": [2, 2], "line-opacity": 0.95 }
+      });
+
+      // Onzichtbare gebouwen-laag voor A3 150m afstandscheck
+      map.addLayer({
+        id: "infra-buildings",
+        type: "fill",
+        source: "osm-vector",
+        "source-layer": "building",
+        minzoom: 12,
+        paint: { "fill-opacity": 0 }
       });
 
       // Hoogspanningslijnen uit OpenStreetMap (paarse stippellijn vanaf zoom 10.5)
