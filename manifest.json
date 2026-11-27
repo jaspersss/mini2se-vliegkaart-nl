@@ -1,6 +1,6 @@
 {
-  "name": "Mini2SE Vliegkaart NL",
-  "short_name": "Mini2SE Kaart",
+  "name": "Dronekaart van Jasper",
+  "short_name": "Dronekaart",
   "description": "Actuele vliegkaart en regel-engine specifiek voor de DJI Mini 2 SE (< 250g, EU Open Categorie A1) in Nederland.",
   "start_url": "./index.html",
   "scope": "./",
