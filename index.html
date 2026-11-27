@@ -1280,15 +1280,15 @@
         }
       });
 
-      // Subtiele gestippelde waarschuwingsgebieden (zweefvliegen, modelvliegen, parachute) met lichte vulling
+      // Subtiele gestippelde waarschuwingsgebieden (zweefvliegen, modelvliegen, paragliding)
       map.addLayer({
         id: "zones-warning-fill",
         type: "fill",
         source: "zones-source",
         filter: ["==", ["get", "render_status"], "info"],
         paint: {
-          "fill-color": "#eab308",
-          "fill-opacity": 0.12
+          "fill-color": "#f59e0b",
+          "fill-opacity": 0.22
         }
       });
       map.addLayer({
@@ -1297,10 +1297,10 @@
         source: "zones-source",
         filter: ["==", ["get", "render_status"], "info"],
         paint: {
-          "line-color": "#eab308",
-          "line-width": 1.6,
+          "line-color": "#d97706",
+          "line-width": 2,
           "line-dasharray": [3, 3],
-          "line-opacity": 0.85
+          "line-opacity": 0.9
         }
       });
 
