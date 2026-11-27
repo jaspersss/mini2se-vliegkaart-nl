@@ -190,7 +190,7 @@
       opacity: 0.88;
     }
 
-    /* Center Crosshair for "Check dit punt" */
+    /* Center Crosshair for "Check dit punt" (exact op 50%, 50% van het scherm) */
     .crosshair-overlay {
       position: fixed;
       top: 50%;
@@ -198,30 +198,20 @@
       transform: translate(-50%, -50%);
       z-index: 10;
       pointer-events: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: opacity 0.2s ease;
-    }
-    .crosshair-ring {
-      width: 34px;
-      height: 34px;
-      border: 2px solid rgba(255, 255, 255, 0.9);
-      border-radius: 50%;
-      box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.75);
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
     .crosshair-dot {
-      width: 6px;
-      height: 6px;
-      background: #38bdf8;
+      width: 8px;
+      height: 8px;
+      background: #0284c7;
+      border: 1.5px solid #ffffff;
       border-radius: 50%;
-      box-shadow: 0 0 6px #38bdf8;
+      box-shadow: 0 0 6px rgba(2, 132, 199, 0.9);
     }
     .crosshair-label {
-      margin-top: 4px;
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
       background: rgba(15, 23, 42, 0.86);
       color: #e2e8f0;
       font-size: 10px;
@@ -492,10 +482,8 @@
 
   <!-- Center Crosshair ("Check dit punt") -->
   <div id="crosshairOverlay" class="crosshair-overlay">
-    <div class="crosshair-ring">
-      <div class="crosshair-dot"></div>
-    </div>
-    <div id="crosshairLabel" class="crosshair-label">Tik of sleep kaart om punt te checken</div>
+    <div class="crosshair-dot"></div>
+    <div id="crosshairLabel" class="crosshair-label">Sleep kaart om punt te checken</div>
   </div>
 
   <!-- Legend -->
@@ -1231,6 +1219,12 @@
 
       // Start automatisch live GPS-tracking (koppelt alleen bij de eerste fix)
       startLiveGpsTracking();
+    });
+
+    // Verberg het sleep-label permanent zodra de gebruiker de kaart een keer heeft versleept
+    map.on("dragstart", () => {
+      const lbl = document.getElementById("crosshairLabel");
+      if (lbl) lbl.style.display = "none";
     });
 
     // Wanneer de gebruiker de kaart sleept of ergens tikt -> evalueer direct het middenpunt
