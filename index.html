@@ -644,8 +644,22 @@
       { id: "fpv", name: "DJI FPV / Phantom 4", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van bebouwing/recreatie. Verboden in actieve GLV-laagvlieggebieden." }
     ];
 
-    const savedDroneId = localStorage.getItem("mini2se_selected_drone_id") || "mini2se";
-    const savedBasemap = localStorage.getItem("mini2se_basemap_pdok");
+    function getPref(key, fallback) {
+      try {
+        const ls = localStorage.getItem(key);
+        if (ls !== null) return ls;
+      } catch (_) {}
+      const match = document.cookie.match(new RegExp("(?:^|; )" + key + "=([^;]*)"));
+      return match ? decodeURIComponent(match[1]) : fallback;
+    }
+
+    function setPref(key, val) {
+      try { localStorage.setItem(key, String(val)); } catch (_) {}
+      document.cookie = `${key}=${encodeURIComponent(String(val))}; max-age=31536000; path=/; SameSite=Lax`;
+    }
+
+    const savedDroneId = getPref("mini2se_selected_drone_id", "mini2se");
+    const savedBasemap = getPref("mini2se_basemap_pdok", "true");
 
     const state = {
       selectedDrone: DRONE_PROFILES.find((d) => d.id === savedDroneId) || DRONE_PROFILES[0],
@@ -663,8 +677,14 @@
       watchId: null,
       simTimeMode: "now",
       simTimestamp: new Date(),
-      usePdokBasemap: savedBasemap === null ? true : savedBasemap === "true"
+      usePdokBasemap: savedBasemap === "true"
     };
+
+    // Zet direct de opgeslagen drone-naam in de bovenbalk (voordat de kaart klaar is met laden)
+    const initBadgeEl = document.getElementById("droneBadgeText");
+    if (initBadgeEl) {
+      initBadgeEl.textContent = `${state.selectedDrone.name} • ${state.selectedDrone.label}`;
+    }
 
     /*************************************************************************
      * 3. REGEL-ENGINE VOOR DJI MINI 2 SE (< 250g, EU OPEN CATEGORIE A1)
@@ -1630,7 +1650,7 @@
 
     document.getElementById("btnToggleBasemap").addEventListener("click", () => {
       state.usePdokBasemap = !state.usePdokBasemap;
-      localStorage.setItem("mini2se_basemap_pdok", String(state.usePdokBasemap));
+      setPref("mini2se_basemap_pdok", String(state.usePdokBasemap));
       map.setLayoutProperty("pdok-layer", "visibility", state.usePdokBasemap ? "visible" : "none");
       map.setLayoutProperty("osm-layer", "visibility", state.usePdokBasemap ? "none" : "visible");
     });
@@ -1663,7 +1683,7 @@
           const found = DRONE_PROFILES.find((d) => d.id === id);
           if (found) {
             state.selectedDrone = found;
-            localStorage.setItem("mini2se_selected_drone_id", found.id);
+            setPref("mini2se_selected_drone_id", found.id);
             droneBackdrop.classList.remove("open");
             refreshEvaluationAndUI();
             updateMapZoneColorsForTime();
