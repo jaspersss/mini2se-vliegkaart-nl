@@ -585,9 +585,9 @@
 
   <!-- Legend -->
   <aside class="legend-box" aria-label="Kaartlegenda">
-    <div class="legend-item"><span class="swatch swatch-red"></span> Verboden (CTR/N2000/Stilte)</div>
-    <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / Voorwaarden</div>
-    <div class="legend-item"><span class="swatch swatch-green"></span> Tijdzone nu inactief (Vrij)</div>
+    <div class="legend-item"><span class="swatch swatch-red"></span> Verboden (CTR 1/2A, Defensie, N2000)</div>
+    <div class="legend-item"><span class="swatch swatch-orange"></span> Toegestaan m.v. (CTR Zone 3, GLV 30m, N2000)</div>
+    <div class="legend-item"><span class="swatch swatch-green"></span> Tijdzone nu inactief (Vrij 120m)</div>
     <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
   </aside>
 
@@ -599,16 +599,16 @@
 
     <select id="presetSelect" class="preset-select" aria-label="Snel naar testlocatie">
       <option value="">📍 Snel naar locatie...</option>
-      <option value="5.2920,52.1720">🟢 Soest-Noord (Vrij A1)</option>
-      <option value="5.2220,52.1850">🔴 Paleis Soestdijk / Drakensteyn (EHP25)</option>
-      <option value="5.2800,52.1300">🟠 Vliegbasis Soesterberg (EHTSA24)</option>
-      <option value="5.3450,52.1420">🔴 Vlasakkers RPAS Oefenterrein (EHTSA55)</option>
-      <option value="5.3400,52.2300">🔴 Stiltegebied Eemland (Prov. Utrecht)</option>
-      <option value="4.7600,52.3100">🔴 Schiphol CTR (LVNL EHAM)</option>
-      <option value="5.5250,52.4550">🔴 Lelystad CTR (LVNL EHLE)</option>
+      <option value="5.2920,52.1720">🟢 Soest / Eemland (Vrij A1)</option>
+      <option value="4.9500,52.2750">🟠 Schiphol CTR Zone 3 (Buitenring - Vrij 120m!)</option>
+      <option value="4.8650,52.3100">🔴 Schiphol CTR Zone 2A (Tussenring - Verboden Open)</option>
+      <option value="4.7600,52.3100">🔴 Schiphol CTR Zone 1 (Kernzone - Verboden)</option>
+      <option value="5.2220,52.1850">🔴 Kasteel Drakensteyn (EHP25)</option>
+      <option value="5.3450,52.1420">🔴 Vlasakkers RPAS Defensie (EHTSA55)</option>
+      <option value="5.2800,52.1300">🟠 Soesterberg Zweefvliegen</option>
+      <option value="5.5250,52.4550">🔴 Lelystad CTR Zone 1</option>
       <option value="5.3500,52.4400">🔴 Oostvaardersplassen (N2000)</option>
       <option value="5.8200,52.1800">🟠 Veluwe (N2000 Zorgplicht)</option>
-      <option value="5.4000,51.8700">🟠 Militair Laagvlieggebied GLV V</option>
     </select>
 
     <button id="btnToggleBasemap" class="ctrl-btn" type="button">
@@ -993,20 +993,22 @@
         if (turf.booleanPointInPolygon(pt, feat)) {
           const p = feat.properties || {};
           const active = isNotamActive(p, dateObj);
+          const notamStatus = p.status || "forbidden";
+          const notamLim = typeof p.max_height_m === "number" ? p.max_height_m : (notamStatus === "forbidden" ? 0 : 120);
           if (active) {
-            escalateStatus("forbidden", 0);
+            escalateStatus(notamStatus, notamLim);
             findings.push({
-              status: "forbidden",
-              title: `${p.naam || "Tijdelijk Gebied met Beperkingen"} (${p.notam_code || "NOTAM"})`,
-              tag: "NOTAM ACTIEF • 0M",
-              body: p.mini2se_toelichting || "Actieve tijdelijke luchtruimbeperking (TGB/NOTAM). Vliegen is op dit tijdstip strikt verboden."
+              status: notamStatus,
+              title: `${p.naam || "Tijdelijke Melding"} (${p.notam_code || "NOTAM"})`,
+              tag: notamStatus === "forbidden" ? "NOTAM VERBOD • 0M" : "NOTAM LET OP",
+              body: p.mini2se_toelichting || "Actieve tijdelijke luchtruimbeperking of navigatiewaarschuwing (NOTAM)."
             });
           } else {
             findings.push({
               status: "free",
               title: `${p.naam || "TGB / NOTAM"} (Momenteel Inactief)`,
               tag: "NOTAM INACTIEF",
-              body: `Er ligt hier een NOTAM/TGB (${p.notam_code || ""}), maar deze is op het geselecteerde tijdstip NIET actief (actief van ${p.daily_start_hour}:00 tot ${p.daily_end_hour}:00).`
+              body: `Aangekondigde NOTAM/TFR (${p.notam_code || ""}), maar op het geselecteerde tijdstip nog niet of niet meer actief.`
             });
           }
         }
