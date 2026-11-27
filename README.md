@@ -20,7 +20,6 @@ Bestaande dronekaarten tonen vaak algemene meldingen die per dronecategorie vers
    - 🔴 **NO-FLY (VERBODEN `0m`):** CTR Zone 1 & 2, militaire CTR's, beveiligde gebieden, actieve NO-FLY NOTAMs/TGB's, Natura 2000-gebieden met expliciet droneverbod, buiten het wettelijke Nederlandse daglichtvenster (UDP), en voor **A3** ook actieve laagvlieggebieden of woon-/industrie-/recreatiegebieden binnen **150m**.
    - 🟠 **LET OP / VOORWAARDEN:** Laagvlieggebieden (max 30m voor A1/A2), Natura 2000 (zorgplicht, >50–100m van vogels, niet opstijgen vanaf Staatsbosbeheer/Natuurmonumenten zonder toestemming), Nationale Parken, waarschuwings-NOTAMs, of een verouderde NOTAM-feed (>3 uur oud).
    - 🟢 **GEEN BEPERKINGEN GEVONDEN (`Max. 120m AGL`):** Geen beperking gevonden in de beschikbare data (o.a. civiele CTR Zone 3 buitenring tot 120m).
-   - 🔵 **ZELF CONTROLEREN (PILOOT-CHECKLIST):** Overzicht per droneprofiel van wat de app niet automatisch kan zien (RDW-exploitantnummer, A1/A3- of A2-vliegbewijs, Remote ID, WA-verzekering, VLOS en toestemming grondeigenaar).
 2. **Atomaire Data-Pipeline + Versheidscontrole (`scripts/update_geodata.py` & `data/meta.json`):**
    - Draait elk uur via GitHub Actions en haalt pas nieuwe GoDrone-data over als **alle 12 geografische tegels** succesvol zijn opgehaald.
    - Houdt per databron (`godrone_luchtruim`, `godrone_notams`, `natura2000`) de status (`ok`, `cached`, `error`) en `last_success` bij. Bij verouderde NOTAM-data (>3 uur) toont de app automatisch een waarschuwing.
