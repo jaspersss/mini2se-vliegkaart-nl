@@ -913,7 +913,7 @@
             findings.push({
               status: st,
               title: p.naam || "Luchtruimzone",
-              tag: st === "forbidden" ? "NO-FLY • 0M" : `VOORWAARDEN • MAX ${lim}M`,
+              tag: st === "forbidden" ? "NO-FLY • 0M" : (st === "free" ? `VRIJ • MAX ${lim}M` : `VOORWAARDEN • MAX ${lim}M`),
               body: p.mini2se_toelichting || "Gecontroleerd luchtruim."
             });
           }
