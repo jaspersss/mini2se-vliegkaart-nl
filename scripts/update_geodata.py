@@ -663,8 +663,9 @@ def main() -> None:
     if np_features:
         luchtruim_fc["features"].extend(np_features)
 
-    # 5. Hoogspanningslijnen uit OpenStreetMap (via 6 compacte Overpass-tegels zodat er geen timeout optreedt)
-    power_fc = fetch_hoogspanning_osm()
+    # 5. Hoogspanningslijnen (statisch bestand in /data/hoogspanning.geojson, geen Overpass-calls meer in CI)
+    power_path = DATA_DIR / "hoogspanning.geojson"
+    power_fc = load_local_json(power_path)
 
     manifest_files: Dict[str, Any] = {}
     manifest_files["luchtruim_mini2se.geojson"] = save_geojson_if_changed(DATA_DIR / "luchtruim_mini2se.geojson", luchtruim_fc)
