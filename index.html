@@ -599,13 +599,13 @@
 
     <select id="presetSelect" class="preset-select" aria-label="Snel naar testlocatie">
       <option value="">📍 Snel naar locatie...</option>
-      <option value="5.2920,52.1530">🟢 Soest-Zuid (Vrij A1)</option>
-      <option value="5.2920,52.1510">🟠 Soesterduinen (N2000 Let op)</option>
-      <option value="5.2800,52.1300">🟠 Zweefvliegveld Soesterberg</option>
-      <option value="5.3400,52.2200">🔴 Stiltegebied Eemland</option>
-      <option value="5.3640,52.1660">🔴 TGB/NOTAM Amersfoort (13-17u)</option>
-      <option value="4.7600,52.3100">🔴 Schiphol CTR (Kernzone)</option>
-      <option value="4.9800,52.2500">🟠 Schiphol CTR (Buitenring)</option>
+      <option value="5.2920,52.1720">🟢 Soest-Noord (Vrij A1)</option>
+      <option value="5.2220,52.1850">🔴 Paleis Soestdijk / Drakensteyn (EHP25)</option>
+      <option value="5.2800,52.1300">🟠 Vliegbasis Soesterberg (EHTSA24)</option>
+      <option value="5.3450,52.1420">🔴 Vlasakkers RPAS Oefenterrein (EHTSA55)</option>
+      <option value="5.3400,52.2300">🔴 Stiltegebied Eemland (Prov. Utrecht)</option>
+      <option value="4.7600,52.3100">🔴 Schiphol CTR (LVNL EHAM)</option>
+      <option value="5.5250,52.4550">🔴 Lelystad CTR (LVNL EHLE)</option>
       <option value="5.3500,52.4400">🔴 Oostvaardersplassen (N2000)</option>
       <option value="5.8200,52.1800">🟠 Veluwe (N2000 Zorgplicht)</option>
       <option value="5.4000,51.8700">🟠 Militair Laagvlieggebied GLV V</option>
@@ -849,28 +849,7 @@
 
     const FALLBACK_NOTAMS = {
       type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {
-            id: "NOTAM_TGB_AMERSFOORT_DEMO",
-            notam_code: "A1492/26",
-            naam: "TGB Politie / Defensie Oefening Amersfoort-West",
-            type: "TGB_NOTAM",
-            status: "forbidden",
-            max_height_m: 0,
-            valid_from: "2025-01-01T00:00:00Z",
-            valid_to: "2028-12-31T23:59:59Z",
-            daily_start_hour: 13,
-            daily_end_hour: 17,
-            mini2se_toelichting: "Tijdelijk Gebied met Beperkingen (TGB / NOTAM): actief tussen 13:00 en 17:00 lokale tijd wegens laagvliegende helikopters. Gedurende dit tijdvak is elke dronevlucht verboden (0m)."
-          },
-          geometry: {
-            type: "Polygon",
-            coordinates: [[[5.340, 52.155], [5.388, 52.155], [5.388, 52.178], [5.340, 52.178], [5.340, 52.155]]]
-          }
-        }
-      ]
+      features: []
     };
 
     /*************************************************************************
@@ -1424,7 +1403,7 @@
         const res = await fetch(url);
         if (res.ok) {
           const json = await res.json();
-          if (json && Array.isArray(json.features) && json.features.length > 0) {
+          if (json && Array.isArray(json.features)) {
             await idbPut(filename, expectedHash || "unversioned", json);
             return { data: json, fromCache: false };
           }
