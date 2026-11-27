@@ -352,10 +352,12 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
 
         act_nl = {
             "GLIDING": "Zweefvliegen",
-            "PARACHUTE": "Parachutespringen",
             "PARAGLIDER": "Paragliding",
             "UAV": "Modelvliegen / Drones",
-        }.get(activity.upper(), activity)
+        }.get(activity.upper())
+
+        if not act_nl:
+            continue
 
         luchtruim_out.append({
             "type": "Feature",
