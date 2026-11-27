@@ -483,19 +483,17 @@ def enrich_natura2000() -> Dict[str, Any]:
 
         if override.get("mini2se_toelichting"):
             toelichting = f"{override['mini2se_toelichting']}{bron_info}"
-        elif props.get("mini2se_toelichting"):
-            toelichting = props["mini2se_toelichting"]
         elif "VR" in bescherming:
             toelichting = (
-                f"Vliegen toegestaan? Ja (geen vliegverbod in het Natura 2000-besluit van {naam}), "
-                "maar dit is een vogelgebied: houd >100m afstand van vogels (extra streng in broedseizoen 15 mrt–15 jul). "
-                f"Opstijgen? Alleen vanaf openbare grond/wegen; opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten is verboden.{bron_info}"
+                f"<strong>Vliegen:</strong> Ja, toegestaan (geen vliegverbod in het Natura 2000-besluit van {naam}).<br>"
+                "<strong>Opstijgen:</strong> Alleen vanaf openbare grond/wegen; verboden vanaf terrein van Staatsbosbeheer of Natuurmonumenten.<br>"
+                f"<strong>Afstand houden:</strong> Min. 100m van vogels (extra streng in broedseizoen 15 mrt–15 jul).{bron_info}"
             )
         elif bescherming == "HR":
             toelichting = (
-                f"Vliegen toegestaan? Ja (geen droneverbod in het Natura 2000-besluit van {naam}). "
-                "Let op: houd afstand van wild en verstoor geen dieren. "
-                f"Opstijgen? Alleen vanaf openbare grond/wegen; niet opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten.{bron_info}"
+                f"<strong>Vliegen:</strong> Ja, toegestaan (geen droneverbod in het Natura 2000-besluit van {naam}).<br>"
+                "<strong>Opstijgen:</strong> Alleen vanaf openbare grond/wegen; niet opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten.<br>"
+                f"<strong>Afstand houden:</strong> Houd afstand van wild en verstoor geen dieren.{bron_info}"
             )
         else:
             toelichting = f"{default_advice}{bron_info}"
