@@ -1267,8 +1267,13 @@
         modalTitleEl.textContent = `Analyse op dit punt (${findings.length} ${findings.length === 1 ? "laag" : "lagen"})`;
       }
       const sheetContent = document.getElementById("sheetContent");
+      const activeDroneName = `${state.selectedDrone.name} (${state.selectedDrone.label})`;
       sheetContent.innerHTML = findings
         .map((item) => {
+          const bodyText = (item.body || "")
+            .replace(/jouw <\s*250g DJI Mini 2 SE in A1/gi, `jouw ${activeDroneName}`)
+            .replace(/jouw DJI Mini 2 SE \(<\s*250g\)/gi, `jouw ${activeDroneName}`)
+            .replace(/DJI Mini 2 SE/gi, activeDroneName);
           const linkHtml = item.url
             ? `<a class="detail-link" href="${item.url}" target="_blank" rel="noopener">🔗 Bekijk officieel Natura 2000-gebiedsprofiel &rarr;</a>`
             : "";
@@ -1278,7 +1283,7 @@
                 <div class="detail-card-title">${item.title}</div>
                 <span class="detail-tag">${item.tag}</span>
               </div>
-              <div class="detail-card-body">${item.body}</div>
+              <div class="detail-card-body">${bodyText}</div>
               ${linkHtml}
             </article>
           `;
