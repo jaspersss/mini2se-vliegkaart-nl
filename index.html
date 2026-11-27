@@ -232,52 +232,35 @@
       white-space: nowrap;
     }
 
-    /* Floating Map Controls (Right Side) */
+    /* Compact Map Switcher Icon Button (Bottom Right, above attribution) */
     .floating-controls {
       position: fixed;
-      right: 12px;
-      top: 146px;
+      right: 10px;
+      bottom: 46px;
       z-index: 15;
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
-    .ctrl-btn {
+    .ctrl-btn-icon {
+      width: 38px;
+      height: 38px;
       background: var(--bg-panel);
       backdrop-filter: blur(10px);
       color: var(--text-main);
       border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 9px 11px;
-      font-size: 12px;
-      font-weight: 600;
+      border-radius: 10px;
+      font-size: 17px;
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: transform 0.12s ease, background 0.15s ease;
+      justify-content: center;
+      transition: transform 0.12s ease;
     }
-    .ctrl-btn:active {
-      transform: scale(0.96);
-    }
-    .ctrl-btn.active {
-      border-color: #38bdf8;
-      color: #38bdf8;
-    }
-
-    /* Preset Location Bar */
-    .preset-select {
-      background: var(--bg-panel);
-      color: var(--text-main);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 8px 10px;
-      font-size: 11.5px;
-      font-weight: 600;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-      max-width: 165px;
+    .ctrl-btn-icon:active {
+      transform: scale(0.94);
     }
 
     /* Map Legend Pill (Left Side) */
@@ -475,7 +458,7 @@
     @media (max-width: 480px) {
       .verdict-title { font-size: 16.5px; }
       .legend-box { top: auto; bottom: 20px; }
-      .floating-controls { top: 96px; }
+      .floating-controls { bottom: 48px; right: 10px; }
     }
   </style>
 </head>
@@ -522,28 +505,10 @@
     <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
   </aside>
 
-  <!-- Floating Controls -->
+  <!-- Floating Basemap Switcher Icon -->
   <div class="floating-controls">
-    <button id="btnLiveGps" class="ctrl-btn" type="button">
-      <span>🛰️</span> <span id="gpsBtnText">Mijn GPS</span>
-    </button>
-
-    <select id="presetSelect" class="preset-select" aria-label="Snel naar testlocatie">
-      <option value="">📍 Snel naar locatie...</option>
-      <option value="5.2920,52.1720">🟢 Soest / Eemland (Vrij A1)</option>
-      <option value="4.9500,52.2750">🟠 Schiphol CTR Zone 3 (Buitenring - Vrij 120m!)</option>
-      <option value="4.8650,52.3100">🔴 Schiphol CTR Zone 2A (Tussenring - Verboden Open)</option>
-      <option value="4.7600,52.3100">🔴 Schiphol CTR Zone 1 (Kernzone - Verboden)</option>
-      <option value="5.2220,52.1850">🔴 Kasteel Drakensteyn (EHP25)</option>
-      <option value="5.3450,52.1420">🔴 Vlasakkers RPAS Defensie (EHTSA55)</option>
-      <option value="5.2800,52.1300">🟠 Soesterberg Zweefvliegen</option>
-      <option value="5.5250,52.4550">🔴 Lelystad CTR Zone 1</option>
-      <option value="5.3500,52.4400">🔴 Oostvaardersplassen (N2000)</option>
-      <option value="5.8200,52.1800">🟠 Veluwe (N2000 Zorgplicht)</option>
-    </select>
-
-    <button id="btnToggleBasemap" class="ctrl-btn" type="button">
-      <span>🗺️</span> <span id="basemapBtnText">PDOK BRT</span>
+    <button id="btnToggleBasemap" class="ctrl-btn-icon" type="button" title="Wissel kaart (PDOK BRT / OpenStreetMap)" aria-label="Wissel achtergrondkaart">
+      🗺️
     </button>
   </div>
 
@@ -1199,6 +1164,9 @@
       // Laad externe GeoJSON-bestanden uit /data/ (indien aanwezig)
       await loadExternalGeoJSONData();
       refreshEvaluationAndUI();
+
+      // Start automatisch live GPS-tracking (koppelt alleen bij de eerste fix)
+      startLiveGpsTracking();
     });
 
     // Wanneer de gebruiker de kaart sleept of ergens tikt -> evalueer direct het middenpunt
@@ -1403,30 +1371,23 @@
 
     function updateLocationModeIndicator() {
       const modeText = document.getElementById("locationModeText");
-      const btnGps = document.getElementById("btnLiveGps");
       const crosshairLabel = document.getElementById("crosshairLabel");
       if (state.followGps) {
         modeText.textContent = "Live GPS-locatie";
-        btnGps.classList.add("active");
         crosshairLabel.textContent = "Live GPS + 500m VLOS";
       } else {
         modeText.textContent = "Kruisdraad-check";
-        btnGps.classList.remove("active");
         crosshairLabel.textContent = "Sleep kaart om punt te checken";
       }
     }
 
     /*************************************************************************
-     * 7. LIVE GPS & KOMPAS (navigator.geolocation.watchPosition)
+     * 7. LIVE GPS & KOMPAS (automatisch aan bij opstarten, koppelt 1x)
      *************************************************************************/
-    function startLiveGpsTracking() {
-      if (!("geolocation" in navigator)) {
-        alert("Geolocatie wordt niet ondersteund door deze browser.");
-        return;
-      }
+    let hasCenteredOnFirstGps = false;
 
-      state.followGps = true;
-      updateLocationModeIndicator();
+    function startLiveGpsTracking() {
+      if (!("geolocation" in navigator)) return;
 
       if (state.watchId === null) {
         state.watchId = navigator.geolocation.watchPosition(
@@ -1443,22 +1404,26 @@
               }
             }
 
-            if (state.followGps) {
+            // Koppel kaart alleen bij de allereerste GPS-fix na opstarten
+            if (!hasCenteredOnFirstGps) {
+              hasCenteredOnFirstGps = true;
+              state.followGps = true;
               state.inspectedLngLat = lngLat;
-              map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 13.5), duration: 500 });
+              updateLocationModeIndicator();
+              map.easeTo({ center: lngLat, zoom: Math.max(map.getZoom(), 13.2), duration: 500 });
               refreshEvaluationAndUI();
             }
           },
           (err) => {
             console.warn("GPS fout:", err.message);
-            state.followGps = false;
-            updateLocationModeIndicator();
           },
           { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
         );
       } else if (state.gpsLngLat) {
+        state.followGps = true;
         state.inspectedLngLat = state.gpsLngLat;
-        map.easeTo({ center: state.gpsLngLat, zoom: Math.max(map.getZoom(), 13.5), duration: 500 });
+        updateLocationModeIndicator();
+        map.easeTo({ center: state.gpsLngLat, zoom: Math.max(map.getZoom(), 13.2), duration: 500 });
         refreshEvaluationAndUI();
       }
     }
@@ -1477,29 +1442,14 @@
     /*************************************************************************
      * 8. EVENT LISTENERS (KNOPPEN, TIJD-SLIDER, BOTTOM SHEET)
      *************************************************************************/
-    document.getElementById("btnLiveGps").addEventListener("click", () => {
-      startLiveGpsTracking();
-    });
-
     document.getElementById("locationModePill").addEventListener("click", () => {
       startLiveGpsTracking();
-    });
-
-    document.getElementById("presetSelect").addEventListener("change", (e) => {
-      const val = e.target.value;
-      if (!val) return;
-      const [lng, lat] = val.split(",").map(Number);
-      state.followGps = false;
-      updateLocationModeIndicator();
-      map.flyTo({ center: [lng, lat], zoom: 12.8, duration: 750 });
-      e.target.value = "";
     });
 
     document.getElementById("btnToggleBasemap").addEventListener("click", () => {
       state.usePdokBasemap = !state.usePdokBasemap;
       map.setLayoutProperty("pdok-layer", "visibility", state.usePdokBasemap ? "visible" : "none");
       map.setLayoutProperty("osm-layer", "visibility", state.usePdokBasemap ? "none" : "visible");
-      document.getElementById("basemapBtnText").textContent = state.usePdokBasemap ? "PDOK BRT" : "OpenStreetMap";
     });
 
     // Top Banner klik -> open Details Popup Modal
