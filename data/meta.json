@@ -1,9 +1,9 @@
 {
   "files": {
     "luchtruim_mini2se.geojson": {
-      "features": 1046,
-      "hash": "8b6c46f97d2bcda6",
-      "size_kb": 1589.7
+      "features": 737,
+      "hash": "16c2a8f50f1ad572",
+      "size_kb": 1217.9
     },
     "natura2000_slim.geojson": {
       "features": 209,

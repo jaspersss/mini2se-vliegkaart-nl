@@ -198,10 +198,8 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 notam_id = str(p.get("notamId") or aid)
                 notam_features[notam_id] = feat
 
-            # 3. Gebieden met verhoogd luchtverkeersrisico (Zweefvliegen, Parachutespringen, Helihavens/Vliegvelden)
-            elif dcat.startswith("risk:increasedAerialActivity:"):
-                key = f"{dcat}:{name}"
-                risk_features[key] = feat
+            # 3. Gebieden met verhoogd luchtverkeersrisico (Parachute, Zweefvliegen, UAV):
+            # Geen wettelijke beperking voor <250g A1-drones -> niet opnemen als oranje zone om ruis te voorkomen.
 
     luchtruim_out: List[Dict[str, Any]] = []
 
