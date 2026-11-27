@@ -1069,7 +1069,9 @@
 
       // Hoofdconclusie samenvatten voor de Top Status Banner
       let headline = "🟢 VRIJ OM TE VLIEGEN";
-      let subline = "Geen actieve restricties voor DJI Mini 2 SE (<250g) op dit punt.";
+      let subline = findings.length > 0 && findings[0].title !== "Vrij Luchtruim (Klasse G) — Open Categorie A1"
+        ? findings[0].title
+        : "Geen actieve restricties voor DJI Mini 2 SE (<250g) op dit punt.";
 
       if (overallStatus === "forbidden") {
         headline = "🔴 NO-FLY (VERBODEN)";
@@ -1221,18 +1223,18 @@
         data: buildVlosCircleGeoJSON(state.inspectedLngLat)
       });
 
-      // Vlakvulling voor zones
+      // Vlakvulling voor zones (alleen tekenen als er een echte restrictie/beperking geldt)
       map.addLayer({
         id: "zones-fill",
         type: "fill",
         source: "zones-source",
+        filter: ["in", ["get", "render_status"], ["literal", ["forbidden", "caution"]]],
         paint: {
           "fill-color": [
             "match",
             ["get", "render_status"],
             "forbidden", "#ef4444",
             "caution", "#f59e0b",
-            "free", "#10b981",
             "#94a3b8"
           ],
           "fill-opacity": [
@@ -1240,7 +1242,6 @@
             ["get", "render_status"],
             "forbidden", 0.30,
             "caution", 0.24,
-            "free", 0.14,
             0.2
           ]
         }
@@ -1251,13 +1252,13 @@
         id: "zones-line",
         type: "line",
         source: "zones-source",
+        filter: ["in", ["get", "render_status"], ["literal", ["forbidden", "caution"]]],
         paint: {
           "line-color": [
             "match",
             ["get", "render_status"],
             "forbidden", "#dc2626",
             "caution", "#d97706",
-            "free", "#059669",
             "#64748b"
           ],
           "line-width": 2

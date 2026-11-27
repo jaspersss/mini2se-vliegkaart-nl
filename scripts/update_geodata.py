@@ -227,21 +227,20 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
 
         # A. Nieuwe Gelaagde Civiele CTR-zones (CTR ZONE 1, 2A, 3)
         if "CTR ZONE 3" in upper_name:
-            # CTR ZONE 3 (Buitenring civiele CTR): OPEN CATEGORIE TOEGESTAAN TOT 120M!
+            # CTR ZONE 3 (Buitenring civiele CTR): OPEN CATEGORIE VRIJ TOT 120M (geen restrictie -> groen, niet tekenen)
             luchtruim_out.append({
                 "type": "Feature",
                 "properties": {
                     "id": aid,
-                    "naam": f"{name} (Buitenring — Open Categorie Toegestaan)",
+                    "naam": f"{name} (Open Categorie Vrij tot 120m)",
                     "type": "CTR_ZONE_3",
                     "categorie": "Civiele CTR Zone 3 (Nieuwe Regeling)",
-                    "status": "caution",
+                    "status": "free",
                     "max_height_m": 120,
                     "schedule": "H24",
                     "mini2se_toelichting": (
                         f"Nieuwe gelaagde CTR-zonering ({name}, 0 tot 120m AGL): "
-                        "Vluchten in de OPEN categorie (zoals jouw < 250g DJI Mini 2 SE in A1) zijn in CTR Zone 3 TOEGESTAAN tot 120m hoogte! "
-                        "(Alleen voor de Specifieke categorie is een extra privilege vereist). Blijf wel extra alert op naderend bemand luchtverkeer."
+                        "Vluchten in de OPEN categorie (zoals jouw < 250g DJI Mini 2 SE in A1) zijn hier zonder restricties TOEGESTAAN tot 120m hoogte."
                     ),
                 },
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
