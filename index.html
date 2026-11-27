@@ -66,7 +66,7 @@
       left: 0;
       right: 0;
       z-index: 20;
-      padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 12px;
+      padding: calc(env(safe-area-inset-top, 0px) + 7px) 12px 9px;
       background: var(--status-green-bg);
       color: #fff;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
@@ -473,9 +473,9 @@
     }
 
     @media (max-width: 480px) {
-      .verdict-title { font-size: 17px; }
-      .legend-box { top: auto; bottom: 24px; }
-      .floating-controls { top: 138px; }
+      .verdict-title { font-size: 16.5px; }
+      .legend-box { top: auto; bottom: 20px; }
+      .floating-controls { top: 96px; }
     }
   </style>
 </head>
@@ -502,11 +502,6 @@
         <div id="altitudeValue" class="altitude-value">120M</div>
       </div>
     </div>
-
-    <div class="daylight-bar">
-      <div id="daylightCountdown" class="daylight-countdown">☀️ Daglicht berekenen...</div>
-      <div id="coordsReadout" class="coords-readout">52.1550, 5.2920</div>
-    </div>
   </header>
 
   <!-- Map Container -->
@@ -523,8 +518,7 @@
   <!-- Legend -->
   <aside class="legend-box" aria-label="Kaartlegenda">
     <div class="legend-item"><span class="swatch swatch-red"></span> Verboden (CTR 1/2A, Defensie, N2000)</div>
-    <div class="legend-item"><span class="swatch swatch-orange"></span> Toegestaan m.v. (CTR Zone 3, GLV 30m, N2000)</div>
-    <div class="legend-item"><span class="swatch swatch-green"></span> Tijdzone nu inactief (Vrij 120m)</div>
+    <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / Voorwaarden (GLV 30m, N2000)</div>
     <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
   </aside>
 
@@ -1369,10 +1363,6 @@
       document.getElementById("verdictSubtitle").textContent = result.subline;
       document.getElementById("altitudeValue").textContent =
         result.maxAltitudeM === 0 ? "0M (STOP)" : `MAX ${result.maxAltitudeM}M`;
-
-      document.getElementById("daylightCountdown").textContent = result.daylight.countdownText;
-      const [lng, lat] = state.inspectedLngLat;
-      document.getElementById("coordsReadout").textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
       // 2. VLOS 500m cirkel bijwerken rond geëvalueerd punt
       if (map.getSource("vlos-source")) {
