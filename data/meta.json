@@ -29,23 +29,25 @@
   "sources": {
     "godrone_luchtruim": {
       "count": 948,
-      "last_attempt": "2026-11-27T17:46:31Z",
+      "last_attempt": "2026-11-27T17:48:17Z",
       "last_success": "2026-11-27T17:46:31Z",
-      "status": "ok"
+      "status": "cached"
     },
     "godrone_notams": {
       "count": 113,
-      "last_attempt": "2026-11-27T17:46:31Z",
+      "last_attempt": "2026-11-27T17:48:17Z",
       "last_success": "2026-11-27T17:46:31Z",
-      "status": "ok"
+      "status": "cached"
     },
     "natura2000": {
       "count": 209,
-      "last_attempt": "2026-11-27T17:46:31Z",
-      "last_success": "2026-11-27T17:46:31Z",
+      "last_attempt": "2026-11-27T17:48:17Z",
+      "last_success": "2026-11-27T17:48:17Z",
       "status": "ok"
     }
   },
-  "updated_at": "2026-11-27T17:46:31Z",
-  "warnings": []
+  "updated_at": "2026-11-27T17:48:17Z",
+  "warnings": [
+    "GoDrone (luchtruim + NOTAMs) niet volledig opgehaald; vorige complete dataset behouden."
+  ]
 }
