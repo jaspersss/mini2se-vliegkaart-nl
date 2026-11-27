@@ -511,6 +511,57 @@ def enrich_natura2000() -> Dict[str, Any]:
     return {"type": "FeatureCollection", "name": "natura2000_slim", "features": enriched_features}
 
 
+def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
+    """Haalt de exacte grenzen van de Nederlandse Nationale Parken op uit PDOK CDDA (o.a. De Hoge Veluwe & Veluwezoom)."""
+    url = "https://api.pdok.nl/rvo/nationaal-beschermde-gebieden-cdda/ogc/v1/collections/cdda/items?f=json&limit=250"
+    raw = fetch_json_url(url, timeout=30)
+    if not raw or not raw.get("features"):
+        return []
+
+    # Bekende Nederlandse Nationale Parken (te onderscheiden van bredere Natura 2000-gebieden)
+    np_names = {
+        "de hoge veluwe", "veluwezoom", "utrechtse heuvelrug", "zuid-kennemerland",
+        "de biesbosch", "sallandse heuvelrug", "dwingelderveld", "de groote peel",
+        "de maasduinen", "de meinweg", "de alde feanen", "lauwersmeer",
+        "schiermonnikoog", "duinen van texel", "weerribben-wieden", "drents-friese wold",
+        "oosterschelde", "zoommeer", "loonse en drunense duinen", "nieuw land", "van het huis"
+    }
+
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for feat in raw["features"]:
+        geom = feat.get("geometry")
+        if not geom:
+            continue
+        p = feat.get("properties") or {}
+        name = str(p.get("sitename") or "").strip()
+        desval = str(p.get("desvalue") or "").strip()
+        if name.lower() in np_names or "nationaal park" in desval.lower():
+            if name.lower() in seen:
+                continue
+            seen.add(name.lower())
+            out.append({
+                "type": "Feature",
+                "properties": {
+                    "id": f"NP_{p.get('localid') or name}",
+                    "naam": f"Nationaal Park {name}",
+                    "type": "NATIONAL_PARK",
+                    "categorie": "Nationaal Park (Terreinregels)",
+                    "status": "forbidden",
+                    "max_height_m": 0,
+                    "schedule": "H24",
+                    "mini2se_toelichting": (
+                        f"Nationaal Park {name}: via de toegangsvoorwaarden en terreinregels van dit Nationaal Park "
+                        "geldt een opstijg- en vliegverbod voor drones (ook < 250g). Buiten de parkgrens geldt dit parkverbod niet."
+                    ),
+                },
+                "geometry": preserve_full_geometry(geom, precision=5),
+            })
+
+    logger.info("Officiële Nationale Parken opgehaald uit PDOK CDDA: %d parken", len(out))
+    return out
+
+
 def fetch_hoogspanning_osm() -> Dict[str, Any]:
     """Haalt Nederlandse hoogspanningslijnen (power=line) op uit OpenStreetMap via 6 kleine tegels."""
     import urllib.parse
@@ -572,7 +623,12 @@ def main() -> None:
     # we houden het bestand leeg zodat gebieden zoals Eemland of Kockengen niet onterecht rood kleuren.
     stilte_fc = {"type": "FeatureCollection", "name": "stiltegebieden", "features": []}
 
-    # 4. Hoogspanningslijnen uit OpenStreetMap (via 6 compacte Overpass-tegels zodat er geen timeout optreedt)
+    # 4. Nationale Parken (o.a. De Hoge Veluwe, Veluwezoom, Utrechtse Heuvelrug, Zuid-Kennemerland) uit PDOK CDDA
+    np_features = fetch_nationale_parken_pdok()
+    if np_features:
+        luchtruim_fc["features"].extend(np_features)
+
+    # 5. Hoogspanningslijnen uit OpenStreetMap (via 6 compacte Overpass-tegels zodat er geen timeout optreedt)
     power_fc = fetch_hoogspanning_osm()
 
     manifest_files: Dict[str, Any] = {}
