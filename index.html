@@ -421,6 +421,8 @@
     .card-forbidden .detail-tag { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
     .card-caution .detail-tag { background: rgba(245, 158, 11, 0.25); color: #fcd34d; }
     .card-free .detail-tag { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; }
+    .detail-card.card-info { border-left-color: #38bdf8; }
+    .card-info .detail-tag { background: rgba(56, 189, 248, 0.22); color: #7dd3fc; }
 
     .detail-card-body {
       font-size: 12px;
@@ -536,8 +538,8 @@
 
     <div class="banner-main">
       <div class="verdict-block">
-        <div id="verdictTitle" class="verdict-title">🟢 VRIJ OM TE VLIEGEN</div>
-        <div id="verdictSubtitle" class="verdict-subtitle">Geen actieve restricties op dit punt en tijdstip.</div>
+        <div id="verdictTitle" class="verdict-title">⏳ DATA LADEN…</div>
+        <div id="verdictSubtitle" class="verdict-subtitle">Luchtruimgegevens worden opgehaald.</div>
       </div>
       <div class="altitude-box">
         <div class="altitude-label">Max Hoogte</div>
@@ -559,9 +561,10 @@
   <aside id="legendBox" class="legend-box" aria-label="Kaartlegenda">
     <div class="legend-header">🎨 Legenda</div>
     <div class="legend-items">
-      <div class="legend-item"><span class="swatch swatch-red"></span> Verboden (CTR 1/2A, Defensie, N2000)</div>
-      <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / Voorwaarden (GLV 30m, N2000)</div>
-      <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
+      <div class="legend-item"><span class="swatch swatch-red"></span> Verboden: CTR-zone 1/2, militaire CTR, beveiligd gebied, NOTAM-verbod, Natura 2000 mét droneverbod</div>
+      <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / voorwaarden: laagvlieggebied (max 30m), Natura 2000 (zorgplicht), nationaal park, NOTAM</div>
+      <div class="legend-item"><span class="swatch swatch-green"></span> Geen kleur: geen beperking gevonden (o.a. CTR-zone 3 buitenring, tot 120m)</div>
+      <div class="legend-item"><span class="swatch swatch-vlos"></span> ~500m-cirkel (richtlijn, VLOS blijft leidend)</div>
     </div>
   </aside>
 
@@ -631,11 +634,11 @@
      * 2. DRONE PROFIELEN & APPLICATIE STAAT (met localStorage opslag)
      *************************************************************************/
     const DRONE_PROFILES = [
-      { id: "mini2se", name: "DJI Mini 2 SE", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
-      { id: "mini3", name: "DJI Mini 3 / 3 Pro", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
-      { id: "mini4pro", name: "DJI Mini 4 Pro", label: "C0 <250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "C0-label: geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
-      { id: "neo", name: "DJI Neo / Flip", label: "C0 <250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "C0-label: geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
-      { id: "atom", name: "Potensic Atom / SE", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "mini2se", name: "DJI Mini 2 SE", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig, wél exploitantnummer (camera). Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "mini3", name: "DJI Mini 3 / 3 Pro", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig, wél exploitantnummer (camera). Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "mini4pro", name: "DJI Mini 4 Pro", label: "C0 <250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "C0-label: geen vliegbewijs of Remote ID nodig, wél exploitantnummer (camera). Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "neo", name: "DJI Neo / Flip", label: "C0 <250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "C0-label: geen vliegbewijs of Remote ID nodig, wél exploitantnummer (camera). Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "atom", name: "Potensic Atom / SE", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig, wél exploitantnummer (camera). Max. 120m AGL, VLOS, niet boven mensenmenigten." },
       { id: "air3", name: "DJI Air 3 / Air 3S", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Niet over niet-betrokken personen vliegen." },
       { id: "avata2", name: "DJI Avata 2", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Bij FPV-bril is een waarnemer (spotter) verplicht." },
       { id: "mavic3c1", name: "DJI Mavic 3 Classic (C1)", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Niet over niet-betrokken personen vliegen." },
@@ -688,11 +691,27 @@
     }
 
     /*************************************************************************
-     * 3. REGEL-ENGINE VOOR DJI MINI 2 SE (< 250g, EU OPEN CATEGORIE A1)
+     * 3. REGEL-ENGINE (EU OPEN CATEGORIE A1/A2/A3, PER DRONEPROFIEL)
      *************************************************************************/
+    /**
+     * Geeft weekdag/uur in Nederlandse tijd (Europe/Amsterdam), ongeacht de tijdzone van het toestel.
+     * Voorkomt dat GLV-/zweefvliegschema's verkeerd worden beoordeeld als je telefoon in een andere tijdzone staat.
+     */
+    const AMS_FMT = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Amsterdam", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    });
+    const WEEKDAY_IDX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    function getAmsterdamParts(dateObj) {
+      const parts = Object.fromEntries(AMS_FMT.formatToParts(dateObj).map((x) => [x.type, x.value]));
+      return { day: WEEKDAY_IDX[parts.weekday], hour: Number(parts.hour) + Number(parts.minute) / 60 };
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     function isTimeBoundZoneActive(schedule, dateObj) {
-      const day = dateObj.getDay(); // 0 = zondag, 6 = zaterdag
-      const hour = dateObj.getHours() + dateObj.getMinutes() / 60;
+      const { day, hour } = getAmsterdamParts(dateObj); // 0 = zondag, 6 = zaterdag
 
       if (schedule === "H24") return true;
 
@@ -719,7 +738,7 @@
       if (props.valid_to && ts > new Date(props.valid_to).getTime()) return false;
 
       if (typeof props.daily_start_hour === "number" && typeof props.daily_end_hour === "number") {
-        const hr = dateObj.getHours() + dateObj.getMinutes() / 60;
+        const hr = getAmsterdamParts(dateObj).hour;
         return hr >= props.daily_start_hour && hr < props.daily_end_hour;
       }
       return true;
@@ -768,6 +787,89 @@
     }
 
     /**
+     * Actualiteitscontrole: berekent bij ELKE evaluatie (elke 30s) opnieuw hoe oud de NOTAM-/luchtruimdata is,
+     * zodat een PWA die urenlang open staat niet stilletjes groen blijft op verouderde data.
+     */
+    const MAX_NOTAM_AGE_HOURS = 3;
+    function getDataFreshnessWarning() {
+      const m = state.dataMeta;
+      if (!m || !m.reachable) {
+        return "Kon niet controleren hoe actueel de NOTAM-data is (offline of meta.json niet bereikbaar). Controleer voor vertrek GoDrone.";
+      }
+      const src = m.sources && m.sources.godrone_notams;
+      if (!src) {
+        return "De dataset bevat nog geen actualiteitsinformatie voor NOTAM's. Controleer voor vertrek GoDrone.";
+      }
+      const lastMs = src.last_success ? Date.parse(src.last_success) : NaN;
+      const ageH = Number.isFinite(lastMs) ? (Date.now() - lastMs) / 3600000 : Infinity;
+      if (src.status !== "ok" || ageH > MAX_NOTAM_AGE_HOURS) {
+        const ageTxt = Number.isFinite(ageH)
+          ? (ageH < 1 ? `${Math.round(ageH * 60)} min` : `${Math.floor(ageH)} uur`)
+          : "onbekende tijd";
+        const statusTxt = { ok: "vers opgehaald", cached: "bron faalde, oude data in gebruik", error: "bron niet bereikbaar" }[src.status] || "onbekend";
+        return `Laatste succesvolle NOTAM-update: ${ageTxt} geleden (status: ${statusTxt}). Nieuwe of gewijzigde NOTAM's kunnen ontbreken — controleer voor vertrek GoDrone.`;
+      }
+      return null;
+    }
+
+    /**
+     * A3-regel: min. 150m horizontale afstand tot woon-, handels-, industrie- en recreatiegebieden.
+     * Gecontroleerd met OpenStreetMap-landgebruik en gebouwen uit de vector-tiles rond het gecontroleerde punt.
+     */
+    const A3_LANDUSE_CLASSES = ["residential", "commercial", "industrial", "retail", "garages", "stadium", "playground", "theme_park", "zoo", "pitch"];
+    function checkA3ResidentialDistance(lngLat) {
+      const base = { tag: "A3 • 150M AFSTAND" };
+      if (typeof map === "undefined" || !map.getZoom || map.getZoom() < 13 || !map.getLayer("infra-landuse-a3")) {
+        return { ...base, status: "caution", title: "A3: 150m-afstand tot bebouwing niet gecontroleerd",
+          body: "Zoom verder in (zoomniveau 13+) zodat de app woon-, industrie- en recreatiegebieden binnen 150m kan controleren. Tot die tijd: beoordeel dit zelf." };
+      }
+      try {
+        const circle150 = turf.circle(lngLat, 0.15, { steps: 32, units: "kilometers" });
+        const [w, s, e, n] = turf.bbox(circle150);
+        const p1 = map.project([w, s]);
+        const p2 = map.project([e, n]);
+        const box = [[Math.min(p1.x, p2.x), Math.min(p1.y, p2.y)], [Math.max(p1.x, p2.x), Math.max(p1.y, p2.y)]];
+        const within = (feats) => feats.filter((f) => { try { return turf.booleanIntersects(circle150, f); } catch (_) { return true; } });
+        const areas = within(map.queryRenderedFeatures(box, { layers: ["infra-landuse-a3"] }));
+        if (areas.length > 0) {
+          const classes = [...new Set(areas.map((f) => (f.properties && f.properties.class) || "bebouwd gebied"))];
+          return { ...base, status: "forbidden", title: "A3: woon-/industrie-/recreatiegebied binnen 150m",
+            body: `Volgens OpenStreetMap ligt er binnen 150m een gebied van het type: ${escapeHtml(classes.join(", "))}. In subcategorie A3 moet je minimaal 150m horizontale afstand houden tot woon-, handels-, industrie- en recreatiegebieden.` };
+        }
+        const blds = map.getLayer("infra-buildings") ? within(map.queryRenderedFeatures(box, { layers: ["infra-buildings"] })) : [];
+        if (blds.length > 0) {
+          return { ...base, status: "caution", title: `A3: ${blds.length} losse gebouw(en) binnen 150m`,
+            body: "Geen aaneengesloten woon-/industriegebied gevonden, maar wel losse bebouwing binnen 150m. Beoordeel zelf of dit onder een woon- of recreatiegebied valt en vlieg nooit over niet-betrokken personen." };
+        }
+        return { ...base, status: "free", title: "A3: geen bebouwing binnen 150m gevonden",
+          body: "In OpenStreetMap is binnen 150m geen woon-, handels-, industrie- of recreatiegebied of gebouw gevonden. OSM kan onvolledig zijn: controleer de omgeving ter plekke." };
+      } catch (_) {
+        return { ...base, status: "caution", title: "A3: 150m-controle mislukt", body: "De kaartgegevens konden niet worden gecontroleerd. Beoordeel de afstand tot bebouwing zelf." };
+      }
+    }
+
+    function buildPilotChecklistHtml(drone) {
+      const items = [
+        "Exploitantnummer (RDW) op de drone — verplicht voor elke drone met camera, ook &lt;250 gram",
+        "WA-verzekering die drones dekt",
+        "Drone met het blote oog blijven zien (VLOS); de ~500m-cirkel is alleen een richtlijn",
+        "Niet boven mensenmenigten; respecteer privacy",
+        "Toestemming van de grondeigenaar/beheerder om op te stijgen en te landen"
+      ];
+      if (drone.label.includes("C1") || drone.openCat === "A2" || drone.openCat === "A3") {
+        items.splice(1, 0, "Online A1/A3-vliegbewijs (EU)");
+      }
+      if (drone.label.includes("C1") || drone.label.includes("C2")) {
+        items.splice(2, 0, "Direct Remote ID ingeschakeld met je exploitantnummer");
+      }
+      if (drone.openCat === "A2") {
+        items.splice(2, 0, "A2-certificaat + min. 30m van niet-betrokken personen (5m in low-speed modus)");
+      }
+      return `<ul style="margin:0;padding-left:18px;">${items.map((i) => `<li>${i}</li>`).join("")}</ul>` +
+        `<div style="margin-top:6px;font-size:11px;color:#94a3b8;">Deze app kan deze voorwaarden niet automatisch controleren en geeft geen juridische vluchtgoedkeuring.</div>`;
+    }
+
+    /**
      * Kernfunctie: evaluateLocationAndTime(lngLat, timestamp)
      * Geeft eenduidig verdict ('forbidden' | 'caution' | 'free'), max hoogte en lijst met redenen terug.
      */
@@ -811,7 +913,7 @@
           const notamLim = typeof p.max_height_m === "number" ? p.max_height_m : (notamStatus === "forbidden" ? 0 : 120);
           if (active) {
             escalateStatus(notamStatus, notamLim);
-            const rawText = p.mini2se_toelichting || "Actieve tijdelijke luchtruimbeperking of navigatiewaarschuwing (NOTAM).";
+            const rawText = escapeHtml(p.mini2se_toelichting || "Actieve tijdelijke luchtruimbeperking of navigatiewaarschuwing (NOTAM).");
             const upperRaw = rawText.toUpperCase();
             let shortSummary = "";
             if (upperRaw.includes("WINDTURBIN") || upperRaw.includes("OBST")) {
@@ -827,11 +929,11 @@
             } else if (upperRaw.includes("PROHIBITED") || upperRaw.includes("RESTRICTED") || upperRaw.includes("TFR")) {
               shortSummary = "Tijdelijk verboden gebied (TGB / vluchtrestrictie).";
             } else {
-              shortSummary = (p.naam || "Tijdelijke luchtvaartmelding").replace(/\.\.\.$/, "");
+              shortSummary = escapeHtml((p.naam || "Tijdelijke luchtvaartmelding").replace(/\.\.\.$/, ""));
             }
 
             const fromStr = p.valid_from ? new Date(p.valid_from).toLocaleString("nl-NL", { dateStyle: "short", timeStyle: "short" }) : "Nu";
-            const toStr = p.valid_to && !String(p.valid_to).startsWith("2099") && !String(p.valid_to).startsWith("2027")
+            const toStr = p.valid_to && !String(p.valid_to).startsWith("2099")
               ? new Date(p.valid_to).toLocaleString("nl-NL", { dateStyle: "short", timeStyle: "short" })
               : "Doorlopend / Onbekend";
 
@@ -844,16 +946,16 @@
 
             findings.push({
               status: notamStatus,
-              title: `${p.naam || "Tijdelijke Melding"} (${p.notam_code || "NOTAM"})`,
+              title: escapeHtml(`${p.naam || "Tijdelijke Melding"} (${p.notam_code || "NOTAM"})`),
               tag: notamStatus === "forbidden" ? "NOTAM VERBOD • 0M" : "NOTAM LET OP",
               body: structuredNotamBody
             });
           } else {
             findings.push({
               status: "free",
-              title: `${p.naam || "TGB / NOTAM"} (Momenteel Inactief)`,
+              title: escapeHtml(`${p.naam || "TGB / NOTAM"} (Momenteel Inactief)`),
               tag: "NOTAM INACTIEF",
-              body: `Aangekondigde NOTAM/TFR (${p.notam_code || ""}), maar op het geselecteerde tijdstip nog niet of niet meer actief.`
+              body: `Aangekondigde NOTAM/TFR (${escapeHtml(p.notam_code || "")}), maar op het geselecteerde tijdstip nog niet of niet meer actief.`
             });
           }
         }
@@ -959,9 +1061,10 @@
       if (findings.length === 0) {
         findings.push({
           status: "free",
-          title: `Vrij Luchtruim (Klasse G) — Open Categorie ${state.selectedDrone.openCat}`,
+          isDefaultFree: true,
+          title: `Geen luchtruimbeperking gevonden (Klasse G) — Open Categorie ${state.selectedDrone.openCat}`,
           tag: "VRIJ TOT 120M AGL",
-          body: `Geen CTR, actief laagvlieggebied, NOTAM, Natura 2000 of Nationaal Park op dit punt. Regels voor jouw ${state.selectedDrone.name} (${state.selectedDrone.label}): ${state.selectedDrone.rules}`
+          body: `In de beschikbare data is op dit punt geen CTR, actief laagvlieggebied, NOTAM, Natura 2000 of Nationaal Park gevonden. Dit is geen garantie: controleer bij twijfel altijd GoDrone. Regels voor jouw ${state.selectedDrone.name} (${state.selectedDrone.label}): ${state.selectedDrone.rules}`
         });
       }
 
@@ -986,48 +1089,51 @@
         } catch (_) {}
       }
 
-      if (state.notamStaleWarning) {
-        escalateStatus("caution", 120);
+      // 8. Operationele dronecontrole: A3 = min. 150m van woon-, handels-, industrie- en recreatiegebieden
+      //    (geografisch gecontroleerd met OpenStreetMap-landgebruik + gebouwen in de vector-tiles).
+      if (state.selectedDrone.openCat === "A3") {
+        const a3Result = checkA3ResidentialDistance(lngLat);
+        if (a3Result.status !== "free") escalateStatus(a3Result.status, a3Result.status === "forbidden" ? 0 : undefined);
+        findings.push(a3Result);
+      }
+
+      // 9. Actualiteit van de onderliggende data (NOTAM's / luchtruim)
+      const freshness = getDataFreshnessWarning();
+      if (freshness) {
+        escalateStatus("caution");
         findings.push({
           status: "caution",
-          title: "⚠️ NOTAM-data mogelijk verouderd",
+          title: "⚠️ Data mogelijk verouderd",
           tag: "CONTROLEER GODRONE",
-          body: state.notamStaleWarning
+          body: freshness
         });
       }
 
-      // Hoofdconclusie samenvatten voor de Top Status Banner (toon alle overlappende bijzonderheden!)
-      let headline = "🟢 VRIJ OM TE VLIEGEN";
-      const hasDefaultFreeOnly =
-        findings.length === 1 && findings[0].title === "Vrij Luchtruim (Klasse G) — Open Categorie A1";
+      // 10. Persoonlijke voorwaarden die de app NIET kan controleren (piloot bevestigt zelf)
+      findings.push({
+        status: "info",
+        title: "Zelf controleren (piloot)",
+        tag: "CHECKLIST",
+        body: buildPilotChecklistHtml(state.selectedDrone)
+      });
 
+      // Hoofdconclusie samenvatten voor de Top Status Banner (toon alle overlappende bijzonderheden!)
+      // Bewust "geen beperkingen gevonden" i.p.v. "vrij om te vliegen": de app garandeert niets.
+      let headline = "🟢 GEEN BEPERKINGEN GEVONDEN";
       if (overallStatus === "forbidden") {
         headline = "🔴 NO-FLY (VERBODEN)";
       } else if (overallStatus === "caution") {
         headline = "🟠 LET OP / VOORWAARDEN";
       }
 
-      const relevantTitles = hasDefaultFreeOnly
-        ? ["Geen restricties"]
-        : findings.map((f) => f.title);
+      const relevantFindings = findings.filter((f) => !f.isDefaultFree && f.status !== "info");
+      const relevantTitles = relevantFindings.length === 0
+        ? ["Geen beperkingen gevonden in de beschikbare data"]
+        : relevantFindings.map((f) => f.title);
 
       if (infraHits.length > 0 || warningHitsInVlos.length > 0) {
         const allVlos = [...infraHits, ...warningHitsInVlos.slice(0, 2)];
-        relevantTitles.push(`In 500m VLOS-cirkel: ${allVlos.join(", ")}`);
-      }
-
-      // 8. A3 150m bebouwingscheck via OpenStreetMap vector-tiles (alleen voor A3-drones)
-      if (state.selectedDrone.openCat === "A3" && typeof map !== "undefined" && map.getZoom && map.getZoom() >= 12) {
-        try {
-          const [cLng, cLat] = lngLat;
-          const sw150 = map.project([cLng - 0.0022, cLat - 0.00135]);
-          const ne150 = map.project([cLng + 0.0022, cLat + 0.00135]);
-          const bbox150 = [[Math.min(sw150.x, ne150.x), Math.min(sw150.y, ne150.y)], [Math.max(sw150.x, ne150.x), Math.max(sw150.y, ne150.y)]];
-          const bld = map.getLayer("infra-buildings") ? map.queryRenderedFeatures(bbox150, { layers: ["infra-buildings"] }) : [];
-          if (bld.length > 0) {
-            relevantTitles.push("⚠️ A3: Bebouwing binnen 150m!");
-          }
-        } catch (_) {}
+        relevantTitles.push(`In ~500m rond je positie: ${allVlos.join(", ")}`);
       }
       const subline = relevantTitles.join(" • ");
 
@@ -1219,6 +1325,17 @@
         minzoom: 10.5,
         filter: ["==", ["get", "class"], "rail"],
         paint: { "line-color": "#ffffff", "line-width": 1.8, "line-dasharray": [2, 2], "line-opacity": 0.95 }
+      });
+
+      // Onzichtbare landgebruik-laag (woon/handel/industrie/recreatie) voor A3 150m afstandscheck
+      map.addLayer({
+        id: "infra-landuse-a3",
+        type: "fill",
+        source: "osm-vector",
+        "source-layer": "landuse",
+        minzoom: 12,
+        filter: ["in", ["get", "class"], ["literal", A3_LANDUSE_CLASSES]],
+        paint: { "fill-opacity": 0 }
       });
 
       // Onzichtbare gebouwen-laag voor A3 150m afstandscheck
@@ -1530,24 +1647,22 @@
 
     async function loadExternalGeoJSONData() {
       let remoteMeta = null;
-      state.notamStaleWarning = null;
+      state.dataMeta = { reachable: false, sources: null };
       try {
         const metaRes = await fetch(`./data/meta.json?t=${Date.now()}`, { cache: "no-store" });
         if (metaRes.ok) {
           const metaJson = await metaRes.json();
           remoteMeta = metaJson.files || null;
-          const notamSrc = metaJson.sources && metaJson.sources.godrone_notams;
-          if (notamSrc) {
-            const lastMs = notamSrc.last_success ? Date.parse(notamSrc.last_success) : NaN;
-            const ageHours = Number.isFinite(lastMs) ? (Date.now() - lastMs) / 3600000 : Infinity;
-            if (notamSrc.status === "error" || ageHours > 3) {
-              const ageTxt = Number.isFinite(ageHours) ? `${Math.floor(ageHours)} uur` : "onbekende tijd";
-              state.notamStaleWarning = `NOTAM-data is ${ageTxt} oud (status: ${notamSrc.status || "onbekend"}). Controleer voor vertrek ook GoDrone/LVNL.`;
-            }
-          }
+          state.dataMeta = { reachable: true, sources: metaJson.sources || null, updatedAt: metaJson.updated_at || null };
+          try { localStorage.setItem("mini2se_last_meta_sources", JSON.stringify(metaJson.sources || null)); } catch (_) {}
         }
       } catch (_) {
-        // Offline: we vallen terug op IndexedDB
+        // Offline: we vallen terug op IndexedDB. Gebruik de laatst bekende bron-tijden zodat de
+        // leeftijd van de (gecachte) NOTAM-data offline gewoon blijft oplopen en tot een waarschuwing leidt.
+        try {
+          const cachedSources = JSON.parse(localStorage.getItem("mini2se_last_meta_sources") || "null");
+          if (cachedSources) state.dataMeta = { reachable: true, offline: true, sources: cachedSources };
+        } catch (_) {}
       }
 
       const [luchtruim, natura2000, stiltegebieden, notams, hoogspanning] = await Promise.all([
@@ -2142,6 +2257,23 @@
       refreshEvaluationAndUI();
       updateMapZoneColorsForTime();
     }, 30000);
+
+    // Haal elke 15 minuten (en bij terugkeren naar de app) nieuwe data op. Dankzij de hash-check in
+    // meta.json wordt alleen gedownload wat echt gewijzigd is (meestal alleen het piepkleine meta.json).
+    async function reloadDataAndRefresh() {
+      try {
+        await loadExternalGeoJSONData();
+        refreshEvaluationAndUI();
+      } catch (_) {}
+    }
+    setInterval(reloadDataAndRefresh, 15 * 60 * 1000);
+    let lastVisibleReload = Date.now();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && Date.now() - lastVisibleReload > 5 * 60 * 1000) {
+        lastVisibleReload = Date.now();
+        reloadDataAndRefresh();
+      }
+    });
   </script>
 </body>
 </html>

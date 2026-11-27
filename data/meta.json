@@ -7,8 +7,8 @@
     },
     "luchtruim_mini2se.geojson": {
       "features": 948,
-      "hash": "656abff08087ff24",
-      "size_kb": 2336.6
+      "hash": "94eeb33afb1f7ffb",
+      "size_kb": 2338.2
     },
     "natura2000_slim.geojson": {
       "features": 209,
@@ -16,14 +16,36 @@
       "size_kb": 10517.8
     },
     "notams_actueel.geojson": {
-      "features": 116,
-      "hash": "c5dd628b2ae16aed",
-      "size_kb": 156.0
+      "features": 113,
+      "hash": "a5b94bafa5894745",
+      "size_kb": 152.5
     },
     "stiltegebieden.geojson": {
       "features": 0,
       "hash": "b3bb310860487051",
       "size_kb": 0.1
     }
-  }
+  },
+  "sources": {
+    "godrone_luchtruim": {
+      "count": 948,
+      "last_attempt": "2026-11-27T17:46:31Z",
+      "last_success": "2026-11-27T17:46:31Z",
+      "status": "ok"
+    },
+    "godrone_notams": {
+      "count": 113,
+      "last_attempt": "2026-11-27T17:46:31Z",
+      "last_success": "2026-11-27T17:46:31Z",
+      "status": "ok"
+    },
+    "natura2000": {
+      "count": 209,
+      "last_attempt": "2026-11-27T17:46:31Z",
+      "last_success": "2026-11-27T17:46:31Z",
+      "status": "ok"
+    }
+  },
+  "updated_at": "2026-11-27T17:46:31Z",
+  "warnings": []
 }

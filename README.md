@@ -1,48 +1,47 @@
-# 🛸 Mini2SE Vliegkaart NL (`< 250g` EU Open Categorie A1)
+# 🛸 Dronekaart van Jasper (EU Open Categorie A1 / A2 / A3)
 
-Een lichtgewicht, mobiel-geoptimaliseerde Progressive Web App (PWA) specifiek ontworpen voor dronepiloten met een **DJI Mini 2 SE (< 250 gram, EU Open Categorie A1)** in Nederland.
+Een lichtgewicht, mobiel-geoptimaliseerde Progressive Web App (PWA) voor dronepiloten in Nederland met ondersteuning voor **12 droneprofielen** (C0 `< 250g` Open A1 zoals de DJI Mini 2 SE / Mini 4 Pro, C1 Open A1, C2 Open A2 en Legacy `> 250g` Open A3).
 
-🔗 **Live Web-App (GitHub Pages):** [https://jaspersss.github.io/mini2se-vliegkaart-nl/](https://jaspersss.github.io/mini2se-vliegkaart-nl/)
+🔗 **Live Web-App:** [https://drone.jasperneeleman.nl](https://drone.jasperneeleman.nl)
 
 ---
 
 ## 🎯 Waarom deze app?
-Bestaande dronekaarten (zoals GoDrone en Aeret) tonen veel juridische ruis die niet geldt voor een `< 250g` A1-drone (zoals A2/A3-afstandseisen of op dat moment inactieve militaire laagvlieggebieden) en geven vage meldingen bij Natura 2000-gebieden (*"Raadpleeg het beheerplan"*).
+Bestaande dronekaarten tonen vaak algemene meldingen die per dronecategorie verschillen of geven onduidelijke Natura 2000-waarschuwingen. **Dronekaart van Jasper** combineert officiële GoDrone/LVNL-data, PDOK Natura 2000-gebieden en OpenStreetMap-infrastructuur in een eigen beslis-engine (`evaluateLocationAndTime`) en geeft bovenaan het scherm direct antwoord op de vraag:
+> *"Welke beperkingen of voorwaarden gelden op déze plek, op dít tijdstip en voor míjn drone?"*
 
-**Mini2SE Vliegkaart NL** filtert alle data door een **DJI Mini 2 SE regel-engine** en geeft bovenaan het scherm direct één eenduidig antwoord op de vraag:
-> *"Mag ik op déze plek en op dít moment opstijgen en vliegen?"*
+*(Let op: deze app is een hulpmiddel en geeft geen juridische vluchtgoedkeuring. Controleer bij twijfel altijd GoDrone / LVNL.)*
 
 ---
 
 ## ✨ Belangrijkste Functies
 
-1. **Beslis-Engine (`evaluateLocationAndTime(lngLat, timestamp)`):**
-   - 🔴 **NO-FLY (`0m`):** Binnenste civiele/militaire CTR's, actieve NOTAMs/TGB's, Provinciale Stiltegebieden, Natura 2000-gebieden met een expliciet vliegverbod én buiten het wettelijke Nederlandse daglichtvenster (15 min vóór zonsopkomst tot 15 min ná zonsondergang).
-   - 🟠 **LET OP / VOORWAARDEN:** Natura 2000 *"Grijs Gebied"* (zorgplicht fauna, >50-100m afstand van vogels, opstijgverbod vanaf terrein Staatsbosbeheer/Natuurmonumenten zonder toestemming), actieve tijdgebonden zones (GLV / zweefvliegsectoren) en buitenste civiele CTR-ringen.
-   - 🟢 **VRIJ OM TE VLIEGEN (`Max. 120m AGL`):** Geen actieve restricties op deze locatie en dit tijdstip (inclusief duidelijk bericht wanneer een laagvlieggebied of zweefvliegzone op dat moment *inactief* is).
-2. **Oplossing voor het "Natura 2000 Vaagheid-probleem":**
-   - Combineert PDOK Natura 2000-geometrieën via een **Spatial Join** met Provinciale Stiltegebieden en onze eigen kennisbank in [`data/n2000_overrides.json`](./data/n2000_overrides.json).
+1. **Drone-specifieke Beslis-Engine (`evaluateLocationAndTime(lngLat, timestamp)`):**
+   - 🔴 **NO-FLY (VERBODEN `0m`):** CTR Zone 1 & 2, militaire CTR's, beveiligde gebieden, actieve NO-FLY NOTAMs/TGB's, Natura 2000-gebieden met expliciet droneverbod, buiten het wettelijke Nederlandse daglichtvenster (UDP), en voor **A3** ook actieve laagvlieggebieden of woon-/industrie-/recreatiegebieden binnen **150m**.
+   - 🟠 **LET OP / VOORWAARDEN:** Laagvlieggebieden (max 30m voor A1/A2), Natura 2000 (zorgplicht, >50–100m van vogels, niet opstijgen vanaf Staatsbosbeheer/Natuurmonumenten zonder toestemming), Nationale Parken, waarschuwings-NOTAMs, of een verouderde NOTAM-feed (>3 uur oud).
+   - 🟢 **GEEN BEPERKINGEN GEVONDEN (`Max. 120m AGL`):** Geen beperking gevonden in de beschikbare data (o.a. civiele CTR Zone 3 buitenring tot 120m).
+   - 🔵 **ZELF CONTROLEREN (PILOOT-CHECKLIST):** Overzicht per droneprofiel van wat de app niet automatisch kan zien (RDW-exploitantnummer, A1/A3- of A2-vliegbewijs, Remote ID, WA-verzekering, VLOS en toestemming grondeigenaar).
+2. **Atomaire Data-Pipeline + Versheidscontrole (`scripts/update_geodata.py` & `data/meta.json`):**
+   - Draait elk uur via GitHub Actions en haalt pas nieuwe GoDrone-data over als **alle 12 geografische tegels** succesvol zijn opgehaald.
+   - Houdt per databron (`godrone_luchtruim`, `godrone_notams`, `natura2000`) de status (`ok`, `cached`, `error`) en `last_success` bij. Bij verouderde NOTAM-data (>3 uur) toont de app automatisch een waarschuwing.
+   - Draait vóór elke publicatie automatisch de regressietests in [`tests/test_locations.py`](./tests/test_locations.py).
 3. **Mobile-First Veld-Interface:**
    - **Sticky Top Status Banner** met maximale vlieghoogte en live daglicht-aftelklok (`SunCalc.js`).
-   - **500m VLOS-referentiecirkel** (`Turf.js`) rond je live GPS-positie of het kaart-kruisdraad (*"Check dit punt"*).
+   - **~500m VLOS-richtlijncirkel** (`Turf.js`) rond je live GPS-positie of het kaart-kruisdraad.
    - **Tijd-simulatie balk** (`Nu`, `+1 uur`, `+3 uur`, `Morgen 10:00` + tijdslider) om vooruit te kijken.
 
 ---
 
-## ⚙️ GitHub Pages & GitHub Actions Instellingen
+## ⚙️ GitHub Actions & Secret Instellen
 
-### 1. GitHub Actions Write Permissions
-Zodat de workflow [`.github/workflows/update_data.yml`](./.github/workflows/update_data.yml) periodiek zelf de verrijkte en vereenvoudigde GeoJSON-bestanden in `/data/` kan committen:
-1. Ga op GitHub naar **Settings > Actions > General**.
-2. Scroll naar **Workflow permissions**.
-3. Selecteer **"Read and write permissions"** en klik op **Save**.
-
-### 2. GitHub Pages Activeren
-1. Ga op GitHub naar **Settings > Pages**.
-2. Kies onder **Build and deployment > Source** voor **Deploy from a branch**.
-3. Selecteer branch `main` en folder `/ (root)` en klik op **Save**.
+1. **API-sleutel als GitHub Secret (`GODRONE_API_KEY`):**
+   De GoDrone API-sleutel staat niet meer in de broncode. Stel hem in op GitHub via **Settings > Secrets and variables > Actions > New repository secret** met naam `GODRONE_API_KEY`.
+2. **GitHub Actions Write Permissions:**
+   Ga naar **Settings > Actions > General > Workflow permissions** en kies **"Read and write permissions"**.
+3. **GitHub Pages:**
+   Ga naar **Settings > Pages**, kies **Deploy from a branch** (`main`, `/ (root)`).
 
 ---
 
 ## 🗂️ Eigen Natura 2000-beoordelingen toevoegen
-Pas eenvoudig [`data/n2000_overrides.json`](./data/n2000_overrides.json) aan om voor een specifiek `gebiedsnummer` de status (`forbidden`, `caution`, `free`) en een heldere praktijktoelichting toe te voegen. Zodra je dit bestand commit, draait de GitHub Action automatisch om `data/natura2000_slim.geojson` bij te werken.
+Pas [`data/n2000_overrides.json`](./data/n2000_overrides.json) aan om voor een specifiek `gebiedsnummer` de status (`forbidden`, `caution`, `free`) en een heldere praktijktoelichting toe te voegen. Zodra je dit bestand commit, draait de GitHub Action automatisch om `data/natura2000_slim.geojson` bij te werken.

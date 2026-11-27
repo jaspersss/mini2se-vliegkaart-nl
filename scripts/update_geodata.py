@@ -33,7 +33,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import urllib.error
@@ -52,7 +54,10 @@ PDOK_NATURA2000_WFS = (
     "&srsName=EPSG:4326&count=250"
 )
 
-GODRONE_API_KEY = "hOrnXF_XuIOko8taj9VCi9MUNP4pXVkR_dN-3B8V0"
+# De sleutel wordt NIET meer in de repository opgeslagen; zet hem als GitHub Actions Secret
+# `GODRONE_API_KEY` (lokaal: `export GODRONE_API_KEY=...`). Zonder sleutel wordt de vorige
+# complete GoDrone-dataset behouden en krijgt de bron status "cached" in meta.json.
+GODRONE_API_KEY = os.environ.get("GODRONE_API_KEY", "").strip()
 GODRONE_TILES: List[Tuple[float, float, float, float]] = [
     (50.7, 51.5, 3.3, 4.6),
     (50.7, 51.5, 4.6, 5.9),
@@ -105,7 +110,7 @@ def fetch_json_url(url: str, headers: Optional[Dict[str, str]] = None, timeout: 
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status == 200:
                 return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
         logger.warning("Kon externe bron niet ophalen (%s): %s", url.split("?")[0], exc)
     return None
 
@@ -149,6 +154,14 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
     de GoDrone / LVNL MapData API.
     Retourneert (luchtruim_fc, notams_fc, all_tiles_ok).
     """
+    if not GODRONE_API_KEY:
+        logger.error("GODRONE_API_KEY ontbreekt (GitHub Secret niet ingesteld); behoud vorige GoDrone-datasets.")
+        return (
+            load_local_json(DATA_DIR / "luchtruim_mini2se.geojson"),
+            load_local_json(DATA_DIR / "notams_actueel.geojson"),
+            False,
+        )
+
     headers = {
         "Authorization": f"X-AA-ApiKey {GODRONE_API_KEY}",
         "Origin": "https://map.godrone.nl",
@@ -306,10 +319,14 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                     "status_inactive": "free",
                     "max_height_active_m": 30,
                     "max_height_inactive_m": 120,
-                    "schedule": "WEEKDAY_08_23",
+                    # De officiële ED-318-zone (GoDrone) bevat GEEN gebruikstijden: de beperking geldt
+                    # volgens de bron permanent. Daarom H24 i.p.v. een eigen aangenomen weekschema.
+                    "schedule": "H24",
+                    "bron": "GoDrone / LVNL ED-318 geozone (Ministerie van IenW)",
                     "mini2se_toelichting": (
-                        f"Laagvlieggebied ({name}): Voor jouw DJI Mini 2 SE (Open Categorie A1/A2) is vliegen hier TOEGESTAAN tot maximaal 30 meter hoogte boven de grond (categorie A3 is hier verboden). "
-                        "Let op plotseling laagvliegende militaire of civiele helikopters/vliegtuigen. In het weekend is het militaire laagvlieggebied doorgaans inactief."
+                        f"Laagvlieggebied ({name}): In de Open Categorie A1/A2 is vliegen hier toegestaan tot maximaal 30 meter boven de grond; A3 is hier niet toegestaan. "
+                        "De officiële geozone vermeldt geen gebruikstijden, dus deze beperking geldt altijd (ook 's avonds en in het weekend). "
+                        "Let op plotseling laagvliegende militaire of civiele helikopters/vliegtuigen."
                     ),
                 },
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
@@ -392,7 +409,9 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
         dcat = str(p.get("detailedCategory") or "")
         is_tfr = dcat == "class:tfr"
         op_from = p.get("operationalFrom") or "2025-01-01T00:00:00Z"
-        op_to = p.get("operationalTo") or "2027-12-31T23:59:59Z"
+        # Geen eindtijd bekend -> markeer als doorlopend (2099) zodat de app dit niet
+        # verwart met een echte eindtijd in 2027.
+        op_to = p.get("operationalTo") or "2099-12-31T23:59:59Z"
 
         disp = p.get("display") or {}
         full_text = ""
@@ -458,7 +477,7 @@ def fetch_natura2000_url_map() -> Dict[str, str]:
     return url_map
 
 
-def enrich_natura2000() -> Dict[str, Any]:
+def enrich_natura2000() -> Tuple[Dict[str, Any], bool]:
     """
     Verrijkt alle 209 Natura 2000-gebieden op 100% originele PDOK-geometrie
     en koppelt ze aan `data/n2000_overrides.json` per gebiedsnummer.
@@ -476,9 +495,12 @@ def enrich_natura2000() -> Dict[str, Any]:
     )
 
     raw_n2000 = fetch_json_url(PDOK_NATURA2000_WFS)
-    if not raw_n2000 or not raw_n2000.get("features"):
-        logger.info("PDOK Natura 2000 WFS niet bereikbaar; gebruik lokale natura2000_slim.geojson.")
-        raw_n2000 = load_local_json(target_path)
+    fresh = bool(raw_n2000 and raw_n2000.get("features"))
+    if not fresh:
+        # Geen verse PDOK-data: publiceer de vorige dataset ongewijzigd (geen herverrijking,
+        # geen nieuwe 'last_success'-tijd) zodat oude informatie niet verser lijkt dan ze is.
+        logger.warning("PDOK Natura 2000 WFS niet bereikbaar; behoud bestaande natura2000_slim.geojson.")
+        return load_local_json(target_path), False
 
     n2k_url_map = fetch_natura2000_url_map()
 
@@ -567,7 +589,7 @@ def enrich_natura2000() -> Dict[str, Any]:
             "geometry": preserve_full_geometry(geom_dict, precision=5),
         })
 
-    return {"type": "FeatureCollection", "name": "natura2000_slim", "features": enriched_features}
+    return {"type": "FeatureCollection", "name": "natura2000_slim", "features": enriched_features}, True
 
 
 def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
@@ -691,16 +713,29 @@ def main() -> None:
     prev_sources = prev_meta.get("sources") or {}
 
     luchtruim_fc, notams_fc, godrone_ok = fetch_godrone_luchtruim_and_notams()
-    n2000_fc = enrich_natura2000()
-    n2000_ok = bool(n2000_fc.get("features"))
+    n2000_fc, n2000_ok = enrich_natura2000()
     # Stiltegebieden zijn geen luchtvaartwet-no-fly-zones en staan ook niet op GoDrone;
     # we houden het bestand leeg zodat gebieden zoals Eemland of Kockengen niet onterecht rood kleuren.
     stilte_fc = {"type": "FeatureCollection", "name": "stiltegebieden", "features": []}
 
-    # 4. Nationale Parken (o.a. De Hoge Veluwe, Veluwezoom, Utrechtse Heuvelrug, Zuid-Kennemerland) uit PDOK CDDA
-    np_features = fetch_nationale_parken_pdok()
-    if np_features and godrone_ok:
+    # 4. Nationale Parken (o.a. De Hoge Veluwe, Veluwezoom, Utrechtse Heuvelrug, Zuid-Kennemerland) uit PDOK CDDA.
+    #    Alleen toevoegen aan een VERSE GoDrone-dataset (de cache bevat ze al). Faalt PDOK, dan
+    #    nemen we de nationale parken uit de vorige dataset over i.p.v. ze stilletjes te laten vallen.
+    warnings: List[str] = []
+    if godrone_ok:
+        np_features = fetch_nationale_parken_pdok()
+        if not np_features:
+            prev_lr = load_local_json(DATA_DIR / "luchtruim_mini2se.geojson")
+            np_features = [
+                f for f in prev_lr.get("features", [])
+                if (f.get("properties") or {}).get("type") == "NATIONAL_PARK"
+            ]
+            warnings.append("PDOK Nationale Parken niet bereikbaar; vorige versie behouden.")
         luchtruim_fc["features"].extend(np_features)
+    else:
+        warnings.append("GoDrone (luchtruim + NOTAMs) niet volledig opgehaald; vorige complete dataset behouden.")
+    if not n2000_ok:
+        warnings.append("PDOK Natura 2000 niet bereikbaar; vorige dataset behouden.")
 
     # 5. Hoogspanningslijnen (statisch bestand in /data/hoogspanning.geojson, geen Overpass-calls meer in CI)
     power_path = DATA_DIR / "hoogspanning.geojson"
@@ -714,27 +749,30 @@ def main() -> None:
     if power_fc.get("features"):
         manifest_files["hoogspanning.geojson"] = save_geojson_if_changed(DATA_DIR / "hoogspanning.geojson", power_fc)
 
+    def source_entry(key: str, ok: bool, fc: Dict[str, Any]) -> Dict[str, Any]:
+        prev = prev_sources.get(key) or {}
+        has_data = bool(fc.get("features"))
+        return {
+            # ok = nu vers opgehaald | cached = bron faalde, vorige data gepubliceerd | error = geen data
+            "status": "ok" if ok else ("cached" if has_data else "error"),
+            "last_attempt": now_iso,
+            "last_success": now_iso if ok else prev.get("last_success"),
+            "count": len(fc.get("features") or []),
+        }
+
     sources_meta = {
-        "godrone_luchtruim": {
-            "status": "ok" if godrone_ok else "error",
-            "last_success": now_iso if godrone_ok else (prev_sources.get("godrone_luchtruim") or {}).get("last_success"),
-            "count": len(luchtruim_fc.get("features") or []),
-        },
-        "godrone_notams": {
-            "status": "ok" if godrone_ok else "error",
-            "last_success": now_iso if godrone_ok else (prev_sources.get("godrone_notams") or {}).get("last_success"),
-            "count": len(notams_fc.get("features") or []),
-        },
-        "natura2000": {
-            "status": "ok" if n2000_ok else "error",
-            "last_success": now_iso if n2000_ok else (prev_sources.get("natura2000") or {}).get("last_success"),
-            "count": len(n2000_fc.get("features") or []),
-        },
+        "godrone_luchtruim": source_entry("godrone_luchtruim", godrone_ok, luchtruim_fc),
+        "godrone_notams": source_entry("godrone_notams", godrone_ok, notams_fc),
+        "natura2000": source_entry("natura2000", n2000_ok, n2000_fc),
     }
+    for w in warnings:
+        # Verschijnt als gele annotatie in de GitHub Actions-run
+        print(f"::warning::{w}")
 
     meta_doc = {
         "updated_at": now_iso,
         "sources": sources_meta,
+        "warnings": warnings,
         "files": manifest_files,
     }
     meta_bytes = json.dumps(meta_doc, indent=2, sort_keys=True).encode("utf-8")
