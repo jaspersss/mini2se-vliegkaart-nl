@@ -931,7 +931,7 @@
 
       // 7. Check of er Spoor, Snelweg of Hoogspanning in de 500m VLOS-cirkel ligt (puur informatief, geen kleurwijziging)
       const infraHits = [];
-      if (typeof map !== "undefined" && map.loaded && map.loaded() && map.getZoom() >= 12.5) {
+      if (typeof map !== "undefined" && map.loaded && map.loaded() && map.getZoom() >= 10.5) {
         try {
           const [cLng, cLat] = lngLat;
           const dLat = 0.0045; // ~500m
@@ -1116,13 +1116,13 @@
         url: "https://tiles.openfreemap.org/planet"
       });
 
-      // Snelwegen (rood-wit gestreept, zichtbaar vanaf zoom 12.5)
+      // Snelwegen (rood-wit gestreept, zichtbaar vanaf zoom 10.5)
       map.addLayer({
         id: "infra-motorway-base",
         type: "line",
         source: "osm-vector",
         "source-layer": "transportation",
-        minzoom: 12.5,
+        minzoom: 10.5,
         filter: ["==", ["get", "class"], "motorway"],
         paint: { "line-color": "#dc2626", "line-width": 3, "line-opacity": 0.75 }
       });
@@ -1131,18 +1131,18 @@
         type: "line",
         source: "osm-vector",
         "source-layer": "transportation",
-        minzoom: 12.5,
+        minzoom: 10.5,
         filter: ["==", ["get", "class"], "motorway"],
         paint: { "line-color": "#ffffff", "line-width": 1.5, "line-dasharray": [3, 3], "line-opacity": 0.9 }
       });
 
-      // Spoorlijnen / trein (zwart-wit geblokt, zichtbaar vanaf zoom 12.5)
+      // Spoorlijnen / trein (zwart-wit geblokt, zichtbaar vanaf zoom 10.5)
       map.addLayer({
         id: "infra-rail-base",
         type: "line",
         source: "osm-vector",
         "source-layer": "transportation",
-        minzoom: 12.5,
+        minzoom: 10.5,
         filter: ["==", ["get", "class"], "rail"],
         paint: { "line-color": "#0f172a", "line-width": 3, "line-opacity": 0.85 }
       });
@@ -1151,12 +1151,12 @@
         type: "line",
         source: "osm-vector",
         "source-layer": "transportation",
-        minzoom: 12.5,
+        minzoom: 10.5,
         filter: ["==", ["get", "class"], "rail"],
         paint: { "line-color": "#ffffff", "line-width": 1.8, "line-dasharray": [2, 2], "line-opacity": 0.95 }
       });
 
-      // Hoogspanningslijnen uit OpenStreetMap (paarse stippellijn vanaf zoom 12.5)
+      // Hoogspanningslijnen uit OpenStreetMap (paarse stippellijn vanaf zoom 10.5)
       map.addSource("hoogspanning-source", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] }
@@ -1165,7 +1165,7 @@
         id: "infra-power-line",
         type: "line",
         source: "hoogspanning-source",
-        minzoom: 12.5,
+        minzoom: 10.5,
         paint: {
           "line-color": "#9333ea",
           "line-width": 2.2,
