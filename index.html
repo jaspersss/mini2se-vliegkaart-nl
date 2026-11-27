@@ -1948,7 +1948,19 @@
             const parser = new DJILog(buf);
             let keychains = [];
             if (parser.version >= 13) {
-              keychains = await parser.fetchKeychains(djiKey);
+              const origFetch = window.fetch.bind(window);
+              window.fetch = (input, init) => {
+                const urlStr = typeof input === "string" ? input : (input && input.url) || "";
+                if (urlStr.includes("dji.com")) {
+                  return origFetch(`https://corsproxy.io/?${encodeURIComponent(urlStr)}`, init);
+                }
+                return origFetch(input, init);
+              };
+              try {
+                keychains = await parser.fetchKeychains(djiKey);
+              } finally {
+                window.fetch = origFetch;
+              }
             }
             const frames = parser.frames(keychains);
             const coords = [];
