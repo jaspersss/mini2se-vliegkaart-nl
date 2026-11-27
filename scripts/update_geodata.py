@@ -527,6 +527,11 @@ def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
         "oosterschelde", "zoommeer", "loonse en drunense duinen", "nieuw land", "van het huis"
     }
 
+    # Nationale Parken met een expliciet parkbreed opstijg- en vliegverbod in de toegangsvoorwaarden
+    strict_forbidden_nps = {
+        "de hoge veluwe", "veluwezoom", "de biesbosch", "zuid-kennemerland", "nieuw land"
+    }
+
     out: List[Dict[str, Any]] = []
     seen = set()
     for feat in raw["features"]:
@@ -540,6 +545,7 @@ def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
             if name.lower() in seen:
                 continue
             seen.add(name.lower())
+            is_strict = name.lower() in strict_forbidden_nps
             out.append({
                 "type": "Feature",
                 "properties": {
@@ -547,12 +553,15 @@ def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
                     "naam": f"Nationaal Park {name}",
                     "type": "NATIONAL_PARK",
                     "categorie": "Nationaal Park (Terreinregels)",
-                    "status": "forbidden",
-                    "max_height_m": 0,
+                    "status": "forbidden" if is_strict else "caution",
+                    "max_height_m": 0 if is_strict else 120,
                     "schedule": "H24",
                     "mini2se_toelichting": (
                         f"Nationaal Park {name}: via de toegangsvoorwaarden en terreinregels van dit Nationaal Park "
-                        "geldt een opstijg- en vliegverbod voor drones (ook < 250g). Buiten de parkgrens geldt dit parkverbod niet."
+                        "geldt een strikt opstijg- en vliegverbod voor drones (ook < 250g). Buiten de parkgrens geldt dit parkverbod niet."
+                        if is_strict
+                        else f"Nationaal Park {name}: geen algemeen parkbreed vliegverbod (je mag vanaf openbare grond/wegen vliegen tot 120m), "
+                             "maar let op de terreinregels van specifieke eigenaren (zoals Staatsbosbeheer, Natuurmonumenten of Utrechts Landschap) en verstoor geen fauna."
                     ),
                 },
                 "geometry": preserve_full_geometry(geom, precision=5),
