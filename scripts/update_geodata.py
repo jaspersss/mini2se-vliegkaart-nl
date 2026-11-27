@@ -284,8 +284,8 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
             })
 
-        # B. Laagvlieggebieden & Laagvliegroutes (ED-318 groep 2.* of "max 30m" in message)
-        elif aid.startswith("nl:uas:zones:ed318:2.") or "MAX 30M" in nl_msg.upper():
+        # B. Laagvlieggebieden & Laagvliegroutes (uitsluitend ED-318 groep 2.*)
+        elif aid.startswith("nl:uas:zones:ed318:2."):
             luchtruim_out.append({
                 "type": "Feature",
                 "properties": {
