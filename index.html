@@ -922,11 +922,21 @@
         }
       }
 
-      // 3. Check Luchtruim (CTR's, Militaire zones, GLV laagvlieggebieden, Zweefvliegsectoren)
+      // 3. Check Luchtruim (CTR's, Militaire zones, GLV laagvlieggebieden, Zweefvliegsectoren, Waarschuwingscirkels)
+      const vlosPoly = turf.circle(lngLat, 0.5, { steps: 16, units: "kilometers" });
+      const warningHitsInVlos = [];
       for (const feat of state.datasets.luchtruim.features || []) {
         if (!feat.geometry) continue;
+        const p = feat.properties || {};
+        if (p.type === "WARNING_CIRCLE") {
+          try {
+            if (turf.booleanPointInPolygon(pt, feat) || turf.booleanIntersects(vlosPoly, feat)) {
+              warningHitsInVlos.push(p.naam);
+            }
+          } catch (_) {}
+          continue;
+        }
         if (turf.booleanPointInPolygon(pt, feat)) {
-          const p = feat.properties || {};
           if (p.type === "GLV_LOW_FLY" || p.type === "TIME_BOUND_AIRSPACE") {
             const isActive = isTimeBoundZoneActive(p.schedule, dateObj);
             if (isActive) {
@@ -1045,8 +1055,9 @@
         ? ["Geen restricties"]
         : findings.map((f) => f.title);
 
-      if (infraHits.length > 0) {
-        relevantTitles.push(`In 500m VLOS-cirkel: ${infraHits.join(", ")}`);
+      if (infraHits.length > 0 || warningHitsInVlos.length > 0) {
+        const allVlos = [...infraHits, ...warningHitsInVlos.slice(0, 2)];
+        relevantTitles.push(`In 500m VLOS-cirkel: ${allVlos.join(", ")}`);
       }
       const subline = relevantTitles.join(" • ");
 
@@ -1330,6 +1341,20 @@
             "#64748b"
           ],
           "line-width": 2
+        }
+      });
+
+      // Subtiele gestippelde waarschuwingsgebieden (zweefvliegen, modelvliegen, parachute)
+      map.addLayer({
+        id: "zones-warning-line",
+        type: "line",
+        source: "zones-source",
+        filter: ["==", ["get", "render_status"], "info"],
+        paint: {
+          "line-color": "#eab308",
+          "line-width": 1.6,
+          "line-dasharray": [3, 3],
+          "line-opacity": 0.8
         }
       });
 

@@ -198,8 +198,11 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 notam_id = str(p.get("notamId") or aid)
                 notam_features[notam_id] = feat
 
-            # 3. Gebieden met verhoogd luchtverkeersrisico (Parachute, Zweefvliegen, UAV):
-            # Geen wettelijke beperking voor <250g A1-drones -> niet opnemen als oranje zone om ruis te voorkomen.
+            # 3. Waarschuwingsgebieden (Zweefvliegen, Modelvliegen/UAV, Parachute, Paragliding):
+            # Puur subtiel als stippelcirkel + VLOS-melding, zonder de bovenbalk oranje te maken.
+            elif dcat.startswith("risk:increasedAerialActivity:"):
+                key = f"{dcat}:{name}"
+                risk_features[key] = feat
 
     luchtruim_out: List[Dict[str, Any]] = []
 
@@ -336,31 +339,38 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
             })
 
-    # Verwerk Gele Waarschuwingszones voor Verhoogde Luchtactiviteit (Zweefvliegen, Parachutespringen, Lokale Vliegvelden)
+    # Verwerk Subtiele Waarschuwingszones (Zweefvliegen, Modelvliegen/UAV, Parachute, Paragliding)
     for key, feat in sorted(risk_features.items()):
         p = feat.get("properties") or {}
-        name = str(p.get("name") or "Verhoogde Luchtactiviteit").strip()
+        name = str(p.get("name") or "Luchtactiviteit").strip()
         disp = p.get("display") or {}
-        activity = "Luchtvaartactiviteit"
+        activity = "Luchtactiviteit"
         for sec in disp.get("sections") or []:
             if sec.get("displayTitle") == "Activiteit" or sec.get("title") == "Activity":
                 activity = strip_html(str(sec.get("text") or "Luchtvaart"))
                 break
 
+        act_nl = {
+            "GLIDING": "Zweefvliegen",
+            "PARACHUTE": "Parachutespringen",
+            "PARAGLIDER": "Paragliding",
+            "UAV": "Modelvliegen / Drones",
+        }.get(activity.upper(), activity)
+
         luchtruim_out.append({
             "type": "Feature",
             "properties": {
                 "id": f"RISK_{key}",
-                "naam": f"Let op: {name} ({activity})",
-                "type": "INCREASED_AERIAL_RISK",
-                "categorie": f"Gebied met verhoogd luchtverkeersrisico ({activity})",
-                "status": "caution",
+                "naam": f"{act_nl} ({name})",
+                "type": "WARNING_CIRCLE",
+                "categorie": f"Waarschuwingsgebied ({act_nl})",
+                "status": "info",
                 "max_height_m": 120,
                 "schedule": "H24",
                 "mini2se_toelichting": (
-                    f"Waarschuwingszone op GoDrone ({name} — activiteit: {activity}). "
-                    "Geen wettelijk vliegverbod voor jouw DJI Mini 2 SE (vliegen toegestaan tot 120m AGL), "
-                    "maar op deze locatie is een verhoogde kans op laagvliegende zweefvliegtuigen, parachutisten of helikopters. Houd het luchtruim goed in de gaten en geef direct voorrang."
+                    f"Waarschuwingsgebied op GoDrone ({act_nl} — {name}). "
+                    "Geen wettelijk vliegverbod voor jouw drone (vrij tot 120m AGL), "
+                    "maar houd het luchtruim in de gaten en geef voorrang aan zweefvliegers/luchtverkeer."
                 ),
             },
             "geometry": preserve_full_geometry(feat["geometry"], precision=5),

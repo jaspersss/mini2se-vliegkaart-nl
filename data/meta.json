@@ -6,9 +6,9 @@
       "size_kb": 1372.3
     },
     "luchtruim_mini2se.geojson": {
-      "features": 756,
-      "hash": "537b1a5ede6cdbc3",
-      "size_kb": 2143.9
+      "features": 1065,
+      "hash": "ef390620bba60322",
+      "size_kb": 2475.8
     },
     "natura2000_slim.geojson": {
       "features": 209,
@@ -16,9 +16,9 @@
       "size_kb": 10503.2
     },
     "notams_actueel.geojson": {
-      "features": 114,
-      "hash": "d8628ac43a729327",
-      "size_kb": 154.1
+      "features": 116,
+      "hash": "d1c161d31e31b7eb",
+      "size_kb": 155.9
     },
     "stiltegebieden.geojson": {
       "features": 0,
