@@ -1,5 +1,10 @@
 {
   "files": {
+    "hoogspanning.geojson": {
+      "features": 7226,
+      "hash": "a36220aa73bdd28a",
+      "size_kb": 1372.3
+    },
     "luchtruim_mini2se.geojson": {
       "features": 756,
       "hash": "630ca881849424cd",
