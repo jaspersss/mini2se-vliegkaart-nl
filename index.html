@@ -1025,10 +1025,10 @@
         });
       }
 
-      // NOTAMs
+      // NOTAMs (kaartkleur komt 1-op-1 overeen met status in popup & bovenbalk)
       for (const f of state.datasets.notams.features || []) {
         const p = f.properties || {};
-        const renderStatus = isNotamActive(p, dateObj) ? "forbidden" : "free";
+        const renderStatus = isNotamActive(p, dateObj) ? (p.status || "forbidden") : "free";
         features.push({
           type: "Feature",
           geometry: f.geometry,
