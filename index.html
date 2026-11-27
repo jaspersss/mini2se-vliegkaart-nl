@@ -529,11 +529,8 @@
     <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
   </aside>
 
-  <!-- Floating Basemap & Flights Switcher Icons -->
+  <!-- Floating Basemap Switcher Icon -->
   <div class="floating-controls">
-    <button id="btnOpenFlights" class="ctrl-btn-icon" type="button" title="Mijn eerdere vluchten &amp; profiel" aria-label="Mijn eerdere vluchten">
-      ✈️
-    </button>
     <button id="btnToggleBasemap" class="ctrl-btn-icon" type="button" title="Wissel kaart (PDOK BRT / OpenStreetMap)" aria-label="Wissel achtergrondkaart">
       🗺️
     </button>
@@ -2075,10 +2072,13 @@
     }
 
     const flightsBackdrop = document.getElementById("flightsModalBackdrop");
-    document.getElementById("btnOpenFlights").addEventListener("click", () => {
-      renderFlightsModal();
-      flightsBackdrop.classList.add("open");
-    });
+    const btnOpenFlights = document.getElementById("btnOpenFlights");
+    if (btnOpenFlights) {
+      btnOpenFlights.addEventListener("click", () => {
+        renderFlightsModal();
+        flightsBackdrop.classList.add("open");
+      });
+    }
     document.getElementById("flightsModalClose").addEventListener("click", () => {
       flightsBackdrop.classList.remove("open");
     });
