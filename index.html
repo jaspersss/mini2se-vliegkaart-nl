@@ -1754,14 +1754,16 @@
     });
 
     /*************************************************************************
-     * 9. PERSOONLIJKE VLUCHTHISTORIE (ZONDER INLOG, LOKAAL + DJI-LOG-PARSER-JS)
+     * 9. PERSOONLIJKE VLUCHTHISTORIE (SUPABASE SYNC, ALLEEN WACHTWOORD)
      *************************************************************************/
-    let userFlights = JSON.parse(localStorage.getItem("mini2se_local_flights") || "[]");
-    let showFlightsLayer = localStorage.getItem("mini2se_show_flights") !== "false";
+    const SUPABASE_URL = "https://oxroguqltyvbzmumdmyn.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_5qeYIhtvoIb0vKIFtXf-yw_811Bad9i";
+    const PILOT_EMAIL = "ik@jasperneeleman.nl";
+    const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-    function saveLocalFlights() {
-      localStorage.setItem("mini2se_local_flights", JSON.stringify(userFlights));
-    }
+    let currentUser = null;
+    let userFlights = [];
+    let showFlightsLayer = localStorage.getItem("mini2se_show_flights") !== "false";
 
     function syncFlightsToMap() {
       const routeFeatures = [];
@@ -1792,9 +1794,70 @@
       }
     }
 
+    async function loadUserFlights() {
+      if (!sb || !currentUser) {
+        userFlights = [];
+        syncFlightsToMap();
+        return;
+      }
+      const { data, error } = await sb
+        .from("flights")
+        .select("*")
+        .order("start_time", { ascending: false });
+      if (!error && Array.isArray(data)) {
+        userFlights = data;
+        syncFlightsToMap();
+      }
+    }
+
     function renderFlightsModal() {
       const body = document.getElementById("flightsModalBody");
-      const savedDjiKey = localStorage.getItem("mini2se_dji_api_key") || "";
+      if (!sb) {
+        body.innerHTML = `<div class="detail-card-body">Supabase client kon niet worden geladen.</div>`;
+        return;
+      }
+
+      if (!currentUser) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <p style="font-size:12.5px;color:#cbd5e1;">Kies of vul jouw persoonlijke wachtwoord in om je vluchten tussen iPhone en Mac te synchroniseren.</p>
+            <input id="authPassword" type="password" placeholder="Wachtwoord (min. 6 tekens)" style="padding:10px;border-radius:8px;border:1px solid rgba(148,163,184,0.3);background:#1e293b;color:#fff;font-size:13px;" />
+            <div id="authMsg" style="font-size:12px;color:#fbbf24;"></div>
+            <div style="display:flex;gap:8px;">
+              <button id="btnSignIn" type="button" style="flex:1;padding:10px;border-radius:8px;border:none;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;">Inloggen</button>
+              <button id="btnSignUp" type="button" style="flex:1;padding:10px;border-radius:8px;border:1px solid #38bdf8;background:transparent;color:#38bdf8;font-weight:700;cursor:pointer;">Eerste keer instellen</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnSignIn").addEventListener("click", async () => {
+          const password = document.getElementById("authPassword").value;
+          const { data, error } = await sb.auth.signInWithPassword({ email: PILOT_EMAIL, password });
+          if (error) {
+            document.getElementById("authMsg").textContent = error.message;
+          } else {
+            currentUser = data.user;
+            await loadUserFlights();
+            renderFlightsModal();
+          }
+        });
+        document.getElementById("btnSignUp").addEventListener("click", async () => {
+          const password = document.getElementById("authPassword").value;
+          const { data, error } = await sb.auth.signUp({ email: PILOT_EMAIL, password });
+          if (error) {
+            document.getElementById("authMsg").textContent = error.message;
+          } else {
+            document.getElementById("authMsg").textContent = "Wachtwoord ingesteld! Klik nu op Inloggen (of bevestig eventueel je e-mail).";
+            if (data.user && data.session) {
+              currentUser = data.user;
+              await loadUserFlights();
+              renderFlightsModal();
+            }
+          }
+        });
+        return;
+      }
+
+      const savedDjiKey = (currentUser.user_metadata && currentUser.user_metadata.dji_api_key) || localStorage.getItem("mini2se_dji_api_key") || "";
       const flightsHtml = userFlights.length === 0
         ? `<div style="font-size:12px;color:#94a3b8;padding:8px 0;">Nog geen vluchten geïmporteerd.</div>`
         : userFlights.map((fl) => {
@@ -1813,6 +1876,11 @@
 
       body.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#94a3b8;">
+            <span>☁️ Cloud-sync actief (iPhone &amp; Mac)</span>
+            <button id="btnSignOut" type="button" style="background:transparent;border:1px solid rgba(148,163,184,0.3);color:#cbd5e1;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Uitloggen</button>
+          </div>
+
           <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#e2e8f0;cursor:pointer;">
             <input id="chkShowFlights" type="checkbox" ${showFlightsLayer ? "checked" : ""} />
             Toon mijn eerdere vluchten op de kaart (${userFlights.length})
@@ -1832,9 +1900,17 @@
           </button>
           <div id="importStatus" style="font-size:12px;color:#38bdf8;"></div>
 
-          <div style="max-height:240px;overflow-y:auto;">${flightsHtml}</div>
+          <div style="max-height:220px;overflow-y:auto;">${flightsHtml}</div>
         </div>
       `;
+
+      document.getElementById("btnSignOut").addEventListener("click", async () => {
+        await sb.auth.signOut();
+        currentUser = null;
+        userFlights = [];
+        syncFlightsToMap();
+        renderFlightsModal();
+      });
 
       document.getElementById("chkShowFlights").addEventListener("change", (e) => {
         showFlightsLayer = e.target.checked;
@@ -1842,10 +1918,12 @@
         syncFlightsToMap();
       });
 
-      document.getElementById("btnSaveDjiKey").addEventListener("click", () => {
+      document.getElementById("btnSaveDjiKey").addEventListener("click", async () => {
         const key = document.getElementById("inputDjiKey").value.trim();
         localStorage.setItem("mini2se_dji_api_key", key);
-        document.getElementById("importStatus").textContent = "DJI Key opgeslagen op dit apparaat.";
+        const { data, error } = await sb.auth.updateUser({ data: { dji_api_key: key } });
+        if (!error && data.user) currentUser = data.user;
+        document.getElementById("importStatus").textContent = "DJI Key opgeslagen in jouw cloud-account.";
       });
 
       document.getElementById("btnImportFlights").addEventListener("click", () => {
@@ -1861,7 +1939,6 @@
           statusEl.textContent = "Vul eerst je DJI Developer Key in en klik op Opslaan.";
           return;
         }
-        localStorage.setItem("mini2se_dji_api_key", djiKey);
         statusEl.textContent = `Parser laden en ${files.length} bestand(en) verwerken...`;
         try {
           const { DJILog } = await import("https://esm.sh/dji-log-parser-js@latest");
@@ -1892,25 +1969,22 @@
               const details = parser.details || {};
               const startTime = details.startTime ? new Date(details.startTime).toISOString() : new Date(file.lastModified).toISOString();
               const flightKey = `${startTime}_${details.aircraftSn || file.name}`;
-              if (!userFlights.some((x) => x.flight_key === flightKey)) {
-                userFlights.unshift({
-                  id: flightKey,
-                  flight_key: flightKey,
-                  start_time: startTime,
-                  duration_sec: Math.round(details.totalTime || 0),
-                  max_altitude_m: details.maxHeight || maxAlt,
-                  max_distance_m: details.maxHorizontalDistance || maxDist,
-                  home_point: homePt || coords[0],
-                  geojson: { type: "LineString", coordinates: coords }
-                });
-                imported++;
-              }
+              await sb.from("flights").upsert({
+                user_id: currentUser.id,
+                flight_key: flightKey,
+                start_time: startTime,
+                duration_sec: Math.round(details.totalTime || 0),
+                max_altitude_m: details.maxHeight || maxAlt,
+                max_distance_m: details.maxHorizontalDistance || maxDist,
+                home_point: homePt || coords[0],
+                geojson: { type: "LineString", coordinates: coords }
+              }, { onConflict: "user_id,flight_key" });
+              imported++;
             }
           }
-          saveLocalFlights();
-          syncFlightsToMap();
+          await loadUserFlights();
           renderFlightsModal();
-          document.getElementById("importStatus").textContent = `${imported} vlucht(en) succesvol geïmporteerd!`;
+          document.getElementById("importStatus").textContent = `${imported} vlucht(en) gesynchroniseerd!`;
         } catch (err) {
           statusEl.textContent = `Fout bij importeren: ${err.message || err}`;
         }
@@ -1929,11 +2003,10 @@
       });
 
       body.querySelectorAll("[data-del-flight]").forEach((btn) => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", async () => {
           const fid = btn.getAttribute("data-del-flight");
-          userFlights = userFlights.filter((x) => x.id !== fid);
-          saveLocalFlights();
-          syncFlightsToMap();
+          await sb.from("flights").delete().eq("id", fid);
+          await loadUserFlights();
           renderFlightsModal();
         });
       });
@@ -1951,9 +2024,14 @@
       if (e.target === flightsBackdrop) flightsBackdrop.classList.remove("open");
     });
 
-    map.on("load", () => {
-      syncFlightsToMap();
-    });
+    if (sb) {
+      sb.auth.getSession().then(async ({ data }) => {
+        if (data && data.session && data.session.user) {
+          currentUser = data.session.user;
+          await loadUserFlights();
+        }
+      });
+    }
 
     document.getElementById("detailsModalClose").addEventListener("click", () => {
       detailsBackdrop.classList.remove("open");
