@@ -17,7 +17,7 @@
     },
     "notams_actueel.geojson": {
       "features": 113,
-      "hash": "a5b94bafa5894745",
+      "hash": "a284f84bd48b7db7",
       "size_kb": 152.5
     },
     "stiltegebieden.geojson": {
@@ -29,25 +29,23 @@
   "sources": {
     "godrone_luchtruim": {
       "count": 948,
-      "last_attempt": "2026-11-27T17:48:17Z",
-      "last_success": "2026-11-27T17:46:31Z",
-      "status": "cached"
+      "last_attempt": "2026-11-27T21:32:59Z",
+      "last_success": "2026-11-27T21:32:59Z",
+      "status": "ok"
     },
     "godrone_notams": {
       "count": 113,
-      "last_attempt": "2026-11-27T17:48:17Z",
-      "last_success": "2026-11-27T17:46:31Z",
-      "status": "cached"
+      "last_attempt": "2026-11-27T21:32:59Z",
+      "last_success": "2026-11-27T21:32:59Z",
+      "status": "ok"
     },
     "natura2000": {
       "count": 209,
-      "last_attempt": "2026-11-27T17:48:17Z",
-      "last_success": "2026-11-27T17:48:17Z",
+      "last_attempt": "2026-11-27T21:32:59Z",
+      "last_success": "2026-11-27T21:32:59Z",
       "status": "ok"
     }
   },
-  "updated_at": "2026-11-27T17:48:17Z",
-  "warnings": [
-    "GoDrone (luchtruim + NOTAMs) niet volledig opgehaald; vorige complete dataset behouden."
-  ]
+  "updated_at": "2026-11-27T21:32:59Z",
+  "warnings": []
 }
