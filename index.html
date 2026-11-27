@@ -931,7 +931,7 @@
 
       // 7. Check of er Spoor, Snelweg of Hoogspanning in de 500m VLOS-cirkel ligt (puur informatief, geen kleurwijziging)
       const infraHits = [];
-      if (typeof map !== "undefined" && map.loaded && map.loaded() && map.getZoom() >= 10.5) {
+      if (typeof map !== "undefined" && map.getZoom && map.getZoom() >= 10.5) {
         try {
           const [cLng, cLat] = lngLat;
           const dLat = 0.0045; // ~500m
@@ -1260,6 +1260,10 @@
         state.followGps = false;
         updateLocationModeIndicator();
       }
+      refreshEvaluationAndUI();
+    });
+
+    map.on("moveend", () => {
       refreshEvaluationAndUI();
     });
 
