@@ -835,7 +835,16 @@
         const p = feat.properties || {};
         if (p.type === "WARNING_CIRCLE") {
           try {
-            if (turf.booleanPointInPolygon(pt, feat) || turf.booleanIntersects(vlosPoly, feat)) {
+            const insideCircle = turf.booleanPointInPolygon(pt, feat);
+            if (insideCircle) {
+              findings.push({
+                status: "free",
+                title: p.naam,
+                tag: "WAARSCHUWING • VRIJ 120M",
+                body: p.mini2se_toelichting
+              });
+              warningHitsInVlos.push(p.naam);
+            } else if (turf.booleanIntersects(vlosPoly, feat)) {
               warningHitsInVlos.push(p.naam);
             }
           } catch (_) {}
