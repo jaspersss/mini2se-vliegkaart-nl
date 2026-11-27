@@ -790,7 +790,7 @@
      * Actualiteitscontrole: berekent bij ELKE evaluatie (elke 30s) opnieuw hoe oud de NOTAM-/luchtruimdata is,
      * zodat een PWA die urenlang open staat niet stilletjes groen blijft op verouderde data.
      */
-    const MAX_NOTAM_AGE_HOURS = 3;
+    const MAX_NOTAM_AGE_HOURS = 6;
     function getDataFreshnessWarning() {
       const m = state.dataMeta;
       if (!m || !m.reachable) {

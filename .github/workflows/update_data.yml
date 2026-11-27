@@ -2,8 +2,8 @@ name: Update GeoData & Natura 2000 Pipeline
 
 on:
   schedule:
-    # Draait elk uur automatisch voor verse luchtruim-, NOTAM- en Natura 2000-data
-    - cron: "0 * * * *"
+    # Draait elk uur automatisch (op minuut :17 om top-of-the-hour drukte op GitHub te vermijden)
+    - cron: "17 * * * *"
   workflow_dispatch:
   push:
     paths:
