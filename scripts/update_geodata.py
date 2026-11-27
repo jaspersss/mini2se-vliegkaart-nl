@@ -60,8 +60,51 @@ def round_coords(coords: Any, precision: int = 4) -> Any:
     return coords
 
 
+def _rdp_ring(ring: List[List[float]], epsilon: float) -> List[List[float]]:
+    """Pure-Python Ramer-Douglas-Peucker vereenvoudiging voor een 2D coördinatenring."""
+    if len(ring) <= 4:
+        return ring
+
+    def _perp_dist_sq(pt: List[float], a: List[float], b: List[float]) -> float:
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        if dx == 0 and dy == 0:
+            return (pt[0] - a[0]) ** 2 + (pt[1] - a[1]) ** 2
+        t = ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / (dx * dx + dy * dy)
+        t = max(0.0, min(1.0, t))
+        proj_x, proj_y = a[0] + t * dx, a[1] + t * dy
+        return (pt[0] - proj_x) ** 2 + (pt[1] - proj_y) ** 2
+
+    def _rdp(pts: List[List[float]], eps_sq: float) -> List[List[float]]:
+        if len(pts) <= 2:
+            return pts
+        max_d_sq = -1.0
+        idx = 0
+        a, b = pts[0], pts[-1]
+        for i in range(1, len(pts) - 1):
+            d_sq = _perp_dist_sq(pts[i], a, b)
+            if d_sq > max_d_sq:
+                max_d_sq = d_sq
+                idx = i
+        if max_d_sq > eps_sq:
+            left = _rdp(pts[: idx + 1], eps_sq)
+            right = _rdp(pts[idx:], eps_sq)
+            return left[:-1] + right
+        return [a, b]
+
+    # Splits gesloten ring op het verste punt zodat begin/eind behouden blijft
+    mid = len(ring) // 2
+    first_half = _rdp(ring[: mid + 1], epsilon * epsilon)
+    second_half = _rdp(ring[mid:], epsilon * epsilon)
+    simplified = first_half[:-1] + second_half
+    if len(simplified) < 4:
+        return ring[:4] if len(ring) >= 4 else ring
+    if simplified[0] != simplified[-1]:
+        simplified.append(simplified[0])
+    return simplified
+
+
 def simplify_geometry(geom_dict: Dict[str, Any], tolerance: float = 0.0008, precision: int = 4) -> Dict[str, Any]:
-    """Vereenvoudigt een GeoJSON-geometrie met Douglas-Peucker (Shapely) en rondt coördinaten af."""
+    """Vereenvoudigt een GeoJSON-geometrie met Douglas-Peucker (Shapely of pure-Python fallback) en rondt coördinaten af."""
     if HAS_SHAPELY:
         try:
             geom = shape(geom_dict)
@@ -74,10 +117,17 @@ def simplify_geometry(geom_dict: Dict[str, Any], tolerance: float = 0.0008, prec
         except Exception as exc:
             logger.warning("Shapely vereenvoudiging overgeslagen: %s", exc)
 
-    geom_copy = dict(geom_dict)
-    if "coordinates" in geom_copy:
-        geom_copy["coordinates"] = round_coords(geom_copy["coordinates"], precision)
-    return geom_copy
+    gtype = geom_dict.get("type")
+    coords = geom_dict.get("coordinates", [])
+    if gtype == "Polygon":
+        coords = [_rdp_ring(ring, tolerance) for ring in coords]
+    elif gtype == "MultiPolygon":
+        coords = [[_rdp_ring(ring, tolerance) for ring in poly] for poly in coords]
+
+    return {
+        "type": gtype,
+        "coordinates": round_coords(coords, precision),
+    }
 
 
 def fetch_json_url(url: str, timeout: int = 25) -> Optional[Dict[str, Any]]:
