@@ -98,6 +98,7 @@
       padding: 3px 9px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
     }
 
     .mode-pill {
@@ -450,6 +451,41 @@
       .legend-box { top: auto; bottom: 20px; }
       .floating-controls { bottom: 48px; right: 10px; }
     }
+    .drone-group-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin: 10px 0 6px;
+    }
+    .drone-group-title:first-child { margin-top: 0; }
+    .drone-option-btn {
+      width: 100%;
+      text-align: left;
+      background: rgba(30, 41, 59, 0.72);
+      color: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 9px 12px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .drone-option-btn.selected {
+      border-color: #38bdf8;
+      background: rgba(2, 132, 199, 0.25);
+    }
+    .drone-option-meta {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body>
@@ -457,8 +493,8 @@
   <!-- Top Sticky Status Banner -->
   <header id="topBanner" class="top-banner status-free">
     <div class="banner-header">
-      <span class="drone-badge">
-        <span>🛸</span> DJI Mini 2 SE &bull; &lt;250g (A1)
+      <span id="droneBadge" class="drone-badge" title="Tik om van drone te wisselen">
+        <span>🛸</span> <span id="droneBadgeText">DJI Mini 2 SE &bull; &lt;250g (A1)</span>
       </span>
     </div>
 
@@ -505,6 +541,17 @@
         <button id="detailsModalClose" class="details-modal-close" type="button" aria-label="Sluit details">✕</button>
       </div>
       <div id="sheetContent" class="details-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Drone Picker Modal -->
+  <div id="droneModalBackdrop" class="details-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="droneModalTitle">
+    <div class="details-modal">
+      <div class="details-modal-header">
+        <div id="droneModalTitle" class="details-modal-title">🛸 Kies jouw drone</div>
+        <button id="droneModalClose" class="details-modal-close" type="button" aria-label="Sluit drone-kiezer">✕</button>
+      </div>
+      <div id="droneListBody" class="details-modal-body"></div>
     </div>
   </div>
 
@@ -681,9 +728,28 @@
     };
 
     /*************************************************************************
-     * 2. APPLICATIE STAAT
+     * 2. DRONE PROFIELEN & APPLICATIE STAAT (met localStorage opslag)
      *************************************************************************/
+    const DRONE_PROFILES = [
+      { id: "mini2se", name: "DJI Mini 2 SE", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "mini3", name: "DJI Mini 3 / 3 Pro", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "mini4pro", name: "DJI Mini 4 Pro", label: "C0 <250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "C0-label: geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "neo", name: "DJI Neo / Flip", label: "C0 <250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "C0-label: geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "atom", name: "Potensic Atom / SE", label: "<250g (A1)", group: "C0 / <250g (Open A1)", openCat: "A1", rules: "Geen vliegbewijs of Remote ID nodig. Max. 120m AGL, VLOS, niet boven mensenmenigten." },
+      { id: "air3", name: "DJI Air 3 / Air 3S", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Niet over niet-betrokken personen vliegen." },
+      { id: "avata2", name: "DJI Avata 2", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Bij FPV-bril is een waarnemer (spotter) verplicht." },
+      { id: "mavic3c1", name: "DJI Mavic 3 Classic (C1)", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Niet over niet-betrokken personen vliegen." },
+      { id: "mavic3pro", name: "DJI Mavic 3 / 3 Pro (C2)", label: "C2 (A2)", group: "C2 / 900g–4kg (Open A2)", openCat: "A2", rules: "C2-label: A1/A3 + A2-certificaat + Remote ID verplicht. Min. 30m afstand van personen (5m in low-speed)." },
+      { id: "air2s", name: "DJI Air 2S", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van woon-, industrie- en recreatiegebieden. Verboden in actieve GLV-laagvlieggebieden." },
+      { id: "mavic2", name: "DJI Mavic 2 Pro / Zoom", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van woon-, industrie- en recreatiegebieden. Verboden in actieve GLV-laagvlieggebieden." },
+      { id: "fpv", name: "DJI FPV / Phantom 4", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van bebouwing/recreatie. Verboden in actieve GLV-laagvlieggebieden." }
+    ];
+
+    const savedDroneId = localStorage.getItem("mini2se_selected_drone_id") || "mini2se";
+    const savedBasemap = localStorage.getItem("mini2se_basemap_pdok");
+
     const state = {
+      selectedDrone: DRONE_PROFILES.find((d) => d.id === savedDroneId) || DRONE_PROFILES[0],
       datasets: {
         luchtruim: FALLBACK_LUCHTRUIM,
         natura2000: FALLBACK_NATURA2000,
@@ -696,9 +762,9 @@
       gpsHeading: null,
       followGps: false,
       watchId: null,
-      simTimeMode: "now", // 'now' | 'plus1' | 'plus3' | 'tomorrow10' | 'slider'
+      simTimeMode: "now",
       simTimestamp: new Date(),
-      usePdokBasemap: true
+      usePdokBasemap: savedBasemap === null ? true : savedBasemap === "true"
     };
 
     /*************************************************************************
@@ -850,14 +916,17 @@
           if (p.type === "GLV_LOW_FLY" || p.type === "TIME_BOUND_AIRSPACE") {
             const isActive = isTimeBoundZoneActive(p.schedule, dateObj);
             if (isActive) {
-              const st = p.status_active || "caution";
-              const lim = typeof p.max_height_active_m === "number" ? p.max_height_active_m : 30;
+              const isA3Glv = p.type === "GLV_LOW_FLY" && state.selectedDrone.openCat === "A3";
+              const st = isA3Glv ? "forbidden" : (p.status_active || "caution");
+              const lim = isA3Glv ? 0 : (typeof p.max_height_active_m === "number" ? p.max_height_active_m : 30);
               escalateStatus(st, lim);
               findings.push({
                 status: st,
                 title: `${p.naam} (Nu Actief)`,
-                tag: `ACTIEF • MAX ${lim}M`,
-                body: p.mini2se_toelichting
+                tag: isA3Glv ? "A3 VERBODEN • 0M" : `ACTIEF • MAX ${lim}M`,
+                body: isA3Glv
+                  ? `Laagvlieggebied (${p.naam}): voor jouw ${state.selectedDrone.name} in Open Categorie A3 is vliegen in een actief laagvlieggebied VERBODEN (0m).`
+                  : p.mini2se_toelichting
               });
             } else {
               findings.push({
@@ -916,13 +985,13 @@
         }
       }
 
-      // 6. Standaard A1-status als geen enkele restrictieve laag geraakt is
+      // 6. Standaard Open Categorie-status als geen enkele restrictieve laag geraakt is
       if (findings.length === 0) {
         findings.push({
           status: "free",
-          title: "Vrij Luchtruim (Klasse G) — Open Categorie A1",
+          title: `Vrij Luchtruim (Klasse G) — Open Categorie ${state.selectedDrone.openCat}`,
           tag: "VRIJ TOT 120M AGL",
-          body: "Geen CTR, actief laagvlieggebied, NOTAM, Natura 2000 of Stiltegebied op dit punt. Standaard A1-regels voor jouw DJI Mini 2 SE (< 250g): max. 120m hoogte (AGL), houd de drone altijd in direct zicht (VLOS, zie 500m-cirkel), vlieg niet boven mensenmenigten en geef altijd voorrang aan bemand vliegverkeer (zoals traumahelikopters)."
+          body: `Geen CTR, actief laagvlieggebied, NOTAM, Natura 2000 of Nationaal Park op dit punt. Regels voor jouw ${state.selectedDrone.name} (${state.selectedDrone.label}): ${state.selectedDrone.rules}`
         });
       }
 
@@ -1068,7 +1137,13 @@
         const p = f.properties || {};
         let renderStatus = p.status || "forbidden";
         if (p.type === "GLV_LOW_FLY" || p.type === "TIME_BOUND_AIRSPACE") {
-          renderStatus = isTimeBoundZoneActive(p.schedule, dateObj) ? (p.status_active || "caution") : "free";
+          if (isTimeBoundZoneActive(p.schedule, dateObj)) {
+            renderStatus = (p.type === "GLV_LOW_FLY" && state.selectedDrone.openCat === "A3")
+              ? "forbidden"
+              : (p.status_active || "caution");
+          } else {
+            renderStatus = "free";
+          }
         }
         features.push({
           type: "Feature",
@@ -1234,6 +1309,10 @@
           "line-dasharray": [3, 3]
         }
       });
+
+      // Pas opgeslagen achtergrondkaart toe
+      map.setLayoutProperty("pdok-layer", "visibility", state.usePdokBasemap ? "visible" : "none");
+      map.setLayoutProperty("osm-layer", "visibility", state.usePdokBasemap ? "none" : "visible");
 
       // Laad externe GeoJSON-bestanden uit /data/ (indien aanwezig)
       await loadExternalGeoJSONData();
@@ -1445,7 +1524,11 @@
       state.simTimestamp = new Date();
       const result = evaluateLocationAndTime(state.inspectedLngLat, state.simTimestamp);
 
-      // 1. Top Banner kleuren en teksten
+      // 1. Top Banner kleuren, drone-badge en teksten
+      const badgeTextEl = document.getElementById("droneBadgeText");
+      if (badgeTextEl) {
+        badgeTextEl.textContent = `${state.selectedDrone.name} • ${state.selectedDrone.label}`;
+      }
       const banner = document.getElementById("topBanner");
       banner.classList.remove("status-free", "status-caution", "status-forbidden");
       banner.classList.add(`status-${result.status}`);
@@ -1561,14 +1644,64 @@
      *************************************************************************/
     document.getElementById("btnToggleBasemap").addEventListener("click", () => {
       state.usePdokBasemap = !state.usePdokBasemap;
+      localStorage.setItem("mini2se_basemap_pdok", String(state.usePdokBasemap));
       map.setLayoutProperty("pdok-layer", "visibility", state.usePdokBasemap ? "visible" : "none");
       map.setLayoutProperty("osm-layer", "visibility", state.usePdokBasemap ? "none" : "visible");
+    });
+
+    // Drone-kiezer modal
+    const droneBackdrop = document.getElementById("droneModalBackdrop");
+    function renderDronePicker() {
+      const groups = [];
+      for (const d of DRONE_PROFILES) {
+        if (!groups.includes(d.group)) groups.push(d.group);
+      }
+      document.getElementById("droneListBody").innerHTML = groups
+        .map((grp) => {
+          const items = DRONE_PROFILES.filter((d) => d.group === grp)
+            .map((d) => {
+              const sel = d.id === state.selectedDrone.id ? "selected" : "";
+              return `<button type="button" class="drone-option-btn ${sel}" data-drone-id="${d.id}">
+                <span>${d.name}</span>
+                <span class="drone-option-meta">${d.label}</span>
+              </button>`;
+            })
+            .join("");
+          return `<div class="drone-group-title">${grp}</div>${items}`;
+        })
+        .join("");
+
+      document.querySelectorAll(".drone-option-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-drone-id");
+          const found = DRONE_PROFILES.find((d) => d.id === id);
+          if (found) {
+            state.selectedDrone = found;
+            localStorage.setItem("mini2se_selected_drone_id", found.id);
+            droneBackdrop.classList.remove("open");
+            refreshEvaluationAndUI();
+            updateMapZoneColorsForTime();
+          }
+        });
+      });
+    }
+
+    document.getElementById("droneBadge").addEventListener("click", (e) => {
+      e.stopPropagation();
+      renderDronePicker();
+      droneBackdrop.classList.add("open");
+    });
+    document.getElementById("droneModalClose").addEventListener("click", () => {
+      droneBackdrop.classList.remove("open");
+    });
+    droneBackdrop.addEventListener("click", (e) => {
+      if (e.target === droneBackdrop) droneBackdrop.classList.remove("open");
     });
 
     // Top Banner klik -> open Details Popup Modal
     const detailsBackdrop = document.getElementById("detailsModalBackdrop");
     document.getElementById("topBanner").addEventListener("click", (e) => {
-      if (e.target.closest("#locationModePill")) return;
+      if (e.target.closest("#droneBadge")) return;
       detailsBackdrop.classList.add("open");
     });
 
