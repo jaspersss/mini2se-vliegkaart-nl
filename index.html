@@ -1264,6 +1264,31 @@
       refreshEvaluationAndUI();
     });
 
+    function renderDetailsModal(findings) {
+      const modalTitleEl = document.getElementById("detailsModalTitle");
+      if (modalTitleEl) {
+        modalTitleEl.textContent = `Analyse op dit punt (${findings.length} ${findings.length === 1 ? "laag" : "lagen"})`;
+      }
+      const sheetContent = document.getElementById("sheetContent");
+      sheetContent.innerHTML = findings
+        .map((item) => {
+          const linkHtml = item.url
+            ? `<a class="detail-link" href="${item.url}" target="_blank" rel="noopener">🔗 Bekijk officieel Natura 2000-gebiedsprofiel &rarr;</a>`
+            : "";
+          return `
+            <article class="detail-card card-${item.status}">
+              <div class="detail-card-header">
+                <div class="detail-card-title">${item.title}</div>
+                <span class="detail-tag">${item.tag}</span>
+              </div>
+              <div class="detail-card-body">${item.body}</div>
+              ${linkHtml}
+            </article>
+          `;
+        })
+        .join("");
+    }
+
     map.on("click", (e) => {
       const clickedLngLat = [e.lngLat.lng, e.lngLat.lat];
       const clickResult = evaluateLocationAndTime(clickedLngLat, new Date());
@@ -1272,11 +1297,8 @@
         (clickResult.findings.length > 0 &&
           clickResult.findings[0].title !== "Vrij Luchtruim (Klasse G) — Open Categorie A1");
 
-      map.easeTo({ center: clickedLngLat, duration: 350 });
-
       if (hasZoneAtClick) {
-        state.inspectedLngLat = clickedLngLat;
-        refreshEvaluationAndUI();
+        renderDetailsModal(clickResult.findings);
         document.getElementById("detailsModalBackdrop").classList.add("open");
       }
     });
