@@ -477,22 +477,27 @@ def enrich_natura2000() -> Dict[str, Any]:
         status = override.get("status", existing_status)
 
         bescherming = str(props.get("beschermin") or "").strip()
+        besluit_txt = str(props.get("status") or "").strip()
+        staatscour = str(props.get("staatscour") or "").strip()
+        bron_info = f" ({besluit_txt}, Stcrt. {staatscour})" if ("besluit" in besluit_txt.lower() and staatscour) else ""
+
         if override.get("mini2se_toelichting"):
             toelichting = override["mini2se_toelichting"]
         elif props.get("mini2se_toelichting"):
             toelichting = props["mini2se_toelichting"]
         elif "VR" in bescherming:
             toelichting = (
-                f"Vogelrichtlijngebied ({bescherming}): dit Natura 2000-gebied is specifiek aangewezen voor "
-                "beschermde broed-, trek- of watervogels. Verstoring is strafbaar (houd >100m afstand van vogels, "
-                "extra alert in het broedseizoen 15 mrt–15 jul) en opstijgen vanaf terrein van Staatsbosbeheer/"
-                "Natuurmonumenten is zonder toestemming verboden."
+                f"{naam} (#{gebiedsnummer}) is een Vogelrichtlijngebied ({bescherming}){bron_info}: "
+                "specifiek aangewezen voor beschermde broed-, trek- of watervogels. Verstoring is strafbaar "
+                "(houd >100m afstand, extra alert in broedseizoen 15 mrt–15 jul) en opstijgen vanaf terrein "
+                "van Staatsbosbeheer/Natuurmonumenten is zonder toestemming verboden."
             )
         elif bescherming == "HR":
             toelichting = (
-                "Habitatrichtlijngebied (HR): aangewezen voor kwetsbare natuurtypen en diersoorten (geen specifiek "
-                "vogelrichtlijngebied). Geen algemeen droneverbod in het besluit, maar houd afstand van wild en "
-                "stijg niet op vanaf terrein van Staatsbosbeheer/Natuurmonumenten zonder toestemming."
+                f"{naam} (#{gebiedsnummer}) is een Habitatrichtlijngebied (HR){bron_info}: "
+                "aangewezen voor kwetsbare natuurtypen en diersoorten (geen specifiek vogelrichtlijngebied). "
+                "Geen algemeen droneverbod in het aanwijzingsbesluit, maar verstoor geen wild en stijg niet op "
+                "vanaf terrein van Staatsbosbeheer/Natuurmonumenten zonder toestemming."
             )
         else:
             toelichting = default_advice

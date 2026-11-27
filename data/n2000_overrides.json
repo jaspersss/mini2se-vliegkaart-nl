@@ -30,12 +30,60 @@
       "url": "https://www.natura2000.nl/gebieden/flevoland/oostvaardersplassen"
     },
     "83": {
-      "naam": "Utrechtse Heuvelrug / Kolland & Overlangbroek / Soesterduinen",
+      "naam": "Kolland & Overlangbroek",
       "status": "caution",
       "max_height_m": 120,
-      "beheerder": "Gemeente Soest / Staatsbosbeheer / Utrechts Landschap",
-      "mini2se_toelichting": "Geen luchtruimsluiting vanuit Natura 2000, maar let op: grote delen van de Utrechtse Heuvelrug vallen onder Provinciaal Stiltegebied (waar gemotoriseerd modelvliegen verboden is) en terreinen van Utrechts Landschap/SBB verbieden opstijgen. Bij Lange Duinen / Korte Duinen (Soest) extra opletten op broedvogels (boomleeuwerik, nachtzwaluw) en zweefvliegverkeer rond voormalig Vliegbasis Soesterberg.",
+      "beheerder": "Staatsbosbeheer / Utrechts Landschap",
+      "mini2se_toelichting": "Habitatrichtlijngebied (essen-iepenbos en kamsalamander). Geen algemeen luchtruimverbod vanuit het Natura 2000-besluit, maar opstijgen vanaf terrein van Staatsbosbeheer of Utrechts Landschap is zonder toestemming niet toegestaan.",
       "url": "https://www.natura2000.nl/gebieden/utrecht/kolland-overlangbroek"
+    },
+    "95": {
+      "naam": "Oostelijke Vechtplassen",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Natuurmonumenten / Staatsbosbeheer / Waternet",
+      "mini2se_toelichting": "Vogel- en Habitatrichtlijngebied (o.a. purperreiger, roerdomp, zwarte stern, grote karekiet en otter). Het luchtruim is niet gesloten voor <250g drones, maar verstoring van moerasvogels (vooral in rietkragen en tijdens het broedseizoen 15 mrt–15 jul) is strafbaar. Opstijgen vanaf terrein van Natuurmonumenten/SBB is verboden.",
+      "url": "https://www.natura2000.nl/gebieden/noord-holland/oostelijke-vechtplassen"
+    },
+    "73": {
+      "naam": "Markermeer & IJmeer",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Rijkswaterstaat / Natuurmonumenten",
+      "mini2se_toelichting": "Vogelrichtlijngebied voor grote groepen ruiende en overwinterende watervogels (kuifeend, topper, nonnetje, visdief). Geen algemeen droneverbod op open water, maar houd >100–150m afstand van vogelgroepen op het water en broedeilanden (zoals De Kreupel en Marker Wadden).",
+      "url": "https://www.natura2000.nl/gebieden/noord-holland/markermeer-ijmeer"
+    },
+    "72": {
+      "naam": "IJsselmeer",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Rijkswaterstaat",
+      "mini2se_toelichting": "Belangrijk Vogelrichtlijngebied voor overwinterende en ruiende watervogels (o.a. aalscholver, fuut, visdief, dwergmeeuw). Geen luchtruimsluiting, maar verstoring van rustende groepen watervogels en kustbroeders is verboden.",
+      "url": "https://www.natura2000.nl/gebieden/friesland/ijsselmeer"
+    },
+    "38": {
+      "naam": "Rijntakken",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Rijkswaterstaat / Staatsbosbeheer",
+      "mini2se_toelichting": "Vogel- en Habitatrichtlijngebied (uiterwaarden van Rijn, Waal, IJssel; o.a. kwartelkoning, porseleinhoen, zwarte stern). Geen algemeen vliegverbod, maar houd afstand van uiterwaard-broedvogels en weidevogels in het voorjaar.",
+      "url": "https://www.natura2000.nl/gebieden/gelderland/rijntakken"
+    },
+    "34": {
+      "naam": "Weerribben-Wieden",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Staatsbosbeheer / Natuurmonumenten",
+      "mini2se_toelichting": "Kwetsbaar laagveenmoeras (zwarte stern, purperreiger, roerdomp, grote vuurvlinder, otter). Opstijgen vanaf terrein van SBB/Natuurmonumenten is verboden; vanaf openbare wegen/wateren extra afstand houden van rietlanden.",
+      "url": "https://www.natura2000.nl/gebieden/overijssel/weerribben"
+    },
+    "8": {
+      "naam": "Lauwersmeer",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Staatsbosbeheer",
+      "mini2se_toelichting": "Vogelrichtlijngebied (zeearend, bruine kiekendief, tienduizenden ganzen/steltlopers). Let op nabijgelegen militair oefenterrein Marnewaard (EHR2, rood) en het SBB-opstijgverbod.",
+      "url": "https://www.natura2000.nl/gebieden/groningen/lauwersmeer"
     },
     "94": {
       "naam": "Naardermeer",

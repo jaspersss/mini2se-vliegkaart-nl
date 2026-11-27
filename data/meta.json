@@ -12,13 +12,13 @@
     },
     "natura2000_slim.geojson": {
       "features": 209,
-      "hash": "a1331bf6e68c005f",
-      "size_kb": 10503.2
+      "hash": "d3135ed7daea4288",
+      "size_kb": 10515.9
     },
     "notams_actueel.geojson": {
-      "features": 116,
-      "hash": "d1c161d31e31b7eb",
-      "size_kb": 155.9
+      "features": 115,
+      "hash": "8c87436ed426ba2d",
+      "size_kb": 154.9
     },
     "stiltegebieden.geojson": {
       "features": 0,
