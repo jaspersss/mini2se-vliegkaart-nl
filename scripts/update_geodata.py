@@ -466,9 +466,31 @@ def enrich_natura2000() -> Dict[str, Any]:
             existing_status = "caution"
         status = override.get("status", existing_status)
 
+        bescherming = str(props.get("beschermin") or "").strip()
+        if override.get("mini2se_toelichting"):
+            toelichting = override["mini2se_toelichting"]
+        elif props.get("mini2se_toelichting"):
+            toelichting = props["mini2se_toelichting"]
+        elif "VR" in bescherming:
+            toelichting = (
+                f"Vogelrichtlijngebied ({bescherming}): dit Natura 2000-gebied is specifiek aangewezen voor "
+                "beschermde broed-, trek- of watervogels. Verstoring is strafbaar (houd >100m afstand van vogels, "
+                "extra alert in het broedseizoen 15 mrt–15 jul) en opstijgen vanaf terrein van Staatsbosbeheer/"
+                "Natuurmonumenten is zonder toestemming verboden."
+            )
+        elif bescherming == "HR":
+            toelichting = (
+                "Habitatrichtlijngebied (HR): aangewezen voor kwetsbare natuurtypen en diersoorten (geen specifiek "
+                "vogelrichtlijngebied). Geen algemeen droneverbod in het besluit, maar houd afstand van wild en "
+                "stijg niet op vanaf terrein van Staatsbosbeheer/Natuurmonumenten zonder toestemming."
+            )
+        else:
+            toelichting = default_advice
+
         max_height = 0 if status == "forbidden" else int(override.get("max_height_m", 120))
-        toelichting = override.get("mini2se_toelichting") or props.get("mini2se_toelichting") or default_advice
-        url = override.get("url") or props.get("url") or "https://www.natura2000.nl/gebieden"
+        import urllib.parse
+        default_n2k_url = f"https://www.natura2000.nl/zoeken?search_api_fulltext={urllib.parse.quote(str(naam))}"
+        url = override.get("url") or props.get("url") or default_n2k_url
         beheerder = override.get("beheerder") or props.get("beheerder") or "Staatsbosbeheer / Natuurmonumenten / Provincie"
 
         enriched_features.append({
