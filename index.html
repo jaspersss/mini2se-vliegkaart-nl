@@ -1097,6 +1097,52 @@
         data: buildVlosCircleGeoJSON(state.inspectedLngLat)
       });
 
+      // OpenFreeMap vector tiles voor subtiele infra-lijnen (spoor & snelweg) vanaf zoom 12.5
+      map.addSource("osm-vector", {
+        type: "vector",
+        url: "https://tiles.openfreemap.org/planet"
+      });
+
+      // Snelwegen (rood-wit gestreept, zichtbaar vanaf zoom 12.5)
+      map.addLayer({
+        id: "infra-motorway-base",
+        type: "line",
+        source: "osm-vector",
+        "source-layer": "transportation",
+        minzoom: 12.5,
+        filter: ["==", ["get", "class"], "motorway"],
+        paint: { "line-color": "#dc2626", "line-width": 3, "line-opacity": 0.75 }
+      });
+      map.addLayer({
+        id: "infra-motorway-dash",
+        type: "line",
+        source: "osm-vector",
+        "source-layer": "transportation",
+        minzoom: 12.5,
+        filter: ["==", ["get", "class"], "motorway"],
+        paint: { "line-color": "#ffffff", "line-width": 1.5, "line-dasharray": [3, 3], "line-opacity": 0.9 }
+      });
+
+      // Spoorlijnen / trein (zwart-wit geblokt, zichtbaar vanaf zoom 12.5)
+      map.addLayer({
+        id: "infra-rail-base",
+        type: "line",
+        source: "osm-vector",
+        "source-layer": "transportation",
+        minzoom: 12.5,
+        filter: ["==", ["get", "class"], "rail"],
+        paint: { "line-color": "#0f172a", "line-width": 3, "line-opacity": 0.85 }
+      });
+      map.addLayer({
+        id: "infra-rail-dash",
+        type: "line",
+        source: "osm-vector",
+        "source-layer": "transportation",
+        minzoom: 12.5,
+        filter: ["==", ["get", "class"], "rail"],
+        paint: { "line-color": "#ffffff", "line-width": 1.8, "line-dasharray": [2, 2], "line-opacity": 0.95 }
+      });
+
       // Vlakvulling voor zones (alleen tekenen als er een echte restrictie/beperking geldt)
       map.addLayer({
         id: "zones-fill",
