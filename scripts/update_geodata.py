@@ -142,11 +142,12 @@ def save_geojson_if_changed(path: Path, data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any], bool]:
     """
     Haalt alle officiële Nederlandse ED-318 UAS Geozones (inclusief de nieuwe gelaagde
     civiele CTR-zones 1, 2A, 2B en 3), risicogebieden en live NOTAMs rechtstreeks op uit
     de GoDrone / LVNL MapData API.
+    Retourneert (luchtruim_fc, notams_fc, all_tiles_ok).
     """
     headers = {
         "Authorization": f"X-AA-ApiKey {GODRONE_API_KEY}",
@@ -158,11 +159,16 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
     ed318_features: Dict[str, Dict[str, Any]] = {}
     risk_features: Dict[str, Dict[str, Any]] = {}
     notam_features: Dict[str, Dict[str, Any]] = {}
+    failed_tiles = 0
 
     for s, n, w, e in GODRONE_TILES:
         url = f"https://api.godrone.nl/v2/mapdata/geojson?n={n}&s={s}&e={e}&w={w}&is_Compact=false"
         tile_data = fetch_json_url(url, headers=headers, timeout=30)
-        if not tile_data or not tile_data.get("features"):
+        if tile_data is None:
+            failed_tiles += 1
+            logger.warning("GoDrone-tegel (%s,%s,%s,%s) kon niet worden opgehaald.", s, n, w, e)
+            continue
+        if not tile_data.get("features"):
             continue
 
         for feat in tile_data["features"]:
@@ -414,17 +420,23 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
             "geometry": preserve_full_geometry(feat["geometry"], precision=5),
         })
 
-    if not luchtruim_out:
-        logger.warning("GoDrone API niet bereikbaar; behoud bestaande luchtruim_mini2se.geojson.")
+    if failed_tiles > 0 or not luchtruim_out:
+        logger.warning(
+            "GoDrone update onvolledig (%d/%d tegels mislukt); behoud bestaande luchtruim_mini2se.geojson en notams_actueel.geojson.",
+            failed_tiles,
+            len(GODRONE_TILES),
+        )
         return (
             load_local_json(DATA_DIR / "luchtruim_mini2se.geojson"),
             load_local_json(DATA_DIR / "notams_actueel.geojson"),
+            False,
         )
 
     logger.info("GoDrone ED-318 geozones + risicogebieden opgehaald: %d luchtruimzones, %d live NOTAMs", len(luchtruim_out), len(notams_out))
     return (
         {"type": "FeatureCollection", "name": "luchtruim_mini2se", "features": luchtruim_out},
         {"type": "FeatureCollection", "name": "notams_actueel", "features": notams_out},
+        True,
     )
 
 
@@ -673,15 +685,21 @@ def main() -> None:
     logger.info("Start Mini2SE Vliegkaart NL GeoJSON data-pipeline (GoDrone ED-318 Gelaagde CTR's + PDOK Natura 2000)...")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    luchtruim_fc, notams_fc = fetch_godrone_luchtruim_and_notams()
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    meta_path = DATA_DIR / "meta.json"
+    prev_meta = load_local_json(meta_path) if meta_path.exists() else {}
+    prev_sources = prev_meta.get("sources") or {}
+
+    luchtruim_fc, notams_fc, godrone_ok = fetch_godrone_luchtruim_and_notams()
     n2000_fc = enrich_natura2000()
+    n2000_ok = bool(n2000_fc.get("features"))
     # Stiltegebieden zijn geen luchtvaartwet-no-fly-zones en staan ook niet op GoDrone;
     # we houden het bestand leeg zodat gebieden zoals Eemland of Kockengen niet onterecht rood kleuren.
     stilte_fc = {"type": "FeatureCollection", "name": "stiltegebieden", "features": []}
 
     # 4. Nationale Parken (o.a. De Hoge Veluwe, Veluwezoom, Utrechtse Heuvelrug, Zuid-Kennemerland) uit PDOK CDDA
     np_features = fetch_nationale_parken_pdok()
-    if np_features:
+    if np_features and godrone_ok:
         luchtruim_fc["features"].extend(np_features)
 
     # 5. Hoogspanningslijnen (statisch bestand in /data/hoogspanning.geojson, geen Overpass-calls meer in CI)
@@ -696,8 +714,29 @@ def main() -> None:
     if power_fc.get("features"):
         manifest_files["hoogspanning.geojson"] = save_geojson_if_changed(DATA_DIR / "hoogspanning.geojson", power_fc)
 
-    meta_path = DATA_DIR / "meta.json"
-    meta_doc = {"files": manifest_files}
+    sources_meta = {
+        "godrone_luchtruim": {
+            "status": "ok" if godrone_ok else "error",
+            "last_success": now_iso if godrone_ok else (prev_sources.get("godrone_luchtruim") or {}).get("last_success"),
+            "count": len(luchtruim_fc.get("features") or []),
+        },
+        "godrone_notams": {
+            "status": "ok" if godrone_ok else "error",
+            "last_success": now_iso if godrone_ok else (prev_sources.get("godrone_notams") or {}).get("last_success"),
+            "count": len(notams_fc.get("features") or []),
+        },
+        "natura2000": {
+            "status": "ok" if n2000_ok else "error",
+            "last_success": now_iso if n2000_ok else (prev_sources.get("natura2000") or {}).get("last_success"),
+            "count": len(n2000_fc.get("features") or []),
+        },
+    }
+
+    meta_doc = {
+        "updated_at": now_iso,
+        "sources": sources_meta,
+        "files": manifest_files,
+    }
     meta_bytes = json.dumps(meta_doc, indent=2, sort_keys=True).encode("utf-8")
     if not meta_path.exists() or meta_path.read_bytes() != meta_bytes:
         meta_path.write_bytes(meta_bytes)

@@ -986,6 +986,16 @@
         } catch (_) {}
       }
 
+      if (state.notamStaleWarning) {
+        escalateStatus("caution", 120);
+        findings.push({
+          status: "caution",
+          title: "⚠️ NOTAM-data mogelijk verouderd",
+          tag: "CONTROLEER GODRONE",
+          body: state.notamStaleWarning
+        });
+      }
+
       // Hoofdconclusie samenvatten voor de Top Status Banner (toon alle overlappende bijzonderheden!)
       let headline = "🟢 VRIJ OM TE VLIEGEN";
       const hasDefaultFreeOnly =
@@ -1520,11 +1530,21 @@
 
     async function loadExternalGeoJSONData() {
       let remoteMeta = null;
+      state.notamStaleWarning = null;
       try {
         const metaRes = await fetch(`./data/meta.json?t=${Date.now()}`, { cache: "no-store" });
         if (metaRes.ok) {
           const metaJson = await metaRes.json();
           remoteMeta = metaJson.files || null;
+          const notamSrc = metaJson.sources && metaJson.sources.godrone_notams;
+          if (notamSrc) {
+            const lastMs = notamSrc.last_success ? Date.parse(notamSrc.last_success) : NaN;
+            const ageHours = Number.isFinite(lastMs) ? (Date.now() - lastMs) / 3600000 : Infinity;
+            if (notamSrc.status === "error" || ageHours > 3) {
+              const ageTxt = Number.isFinite(ageHours) ? `${Math.floor(ageHours)} uur` : "onbekende tijd";
+              state.notamStaleWarning = `NOTAM-data is ${ageTxt} oud (status: ${notamSrc.status || "onbekend"}). Controleer voor vertrek ook GoDrone/LVNL.`;
+            }
+          }
         }
       } catch (_) {
         // Offline: we vallen terug op IndexedDB
@@ -1631,7 +1651,7 @@
     function updateLocationModeIndicator() {
       const crosshairLabel = document.getElementById("crosshairLabel");
       if (!crosshairLabel) return;
-      crosshairLabel.textContent = state.followGps ? "Live GPS + 500m VLOS" : "Sleep kaart om punt te checken";
+      crosshairLabel.textContent = state.followGps ? "Live GPS + ~500m VLOS-richtlijn" : "Sleep kaart om punt te checken";
     }
 
     /*************************************************************************
