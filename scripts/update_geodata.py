@@ -428,6 +428,24 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
     )
 
 
+def fetch_natura2000_url_map() -> Dict[str, str]:
+    """Haalt alle directe gebieds-URL's op van natura2000.nl/gebieden."""
+    url_map: Dict[str, str] = {}
+    try:
+        req = urllib.request.Request(
+            "https://www.natura2000.nl/gebieden",
+            headers={"User-Agent": "Mini2SE-Vliegkaart-NL/2.0"},
+        )
+        html = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", errors="ignore")
+        for href, text in re.findall(r'href="(/gebieden/[^/]+/[^"]+)"[^>]*>([^<]+)<', html):
+            clean_name = re.sub(r"\s+", " ", text).strip().lower()
+            if clean_name:
+                url_map[clean_name] = f"https://www.natura2000.nl{href}"
+    except Exception as exc:
+        logger.warning("Kon natura2000.nl/gebieden links niet ophalen: %s", exc)
+    return url_map
+
+
 def enrich_natura2000() -> Dict[str, Any]:
     """
     Verrijkt alle 209 Natura 2000-gebieden op 100% originele PDOK-geometrie
@@ -449,6 +467,8 @@ def enrich_natura2000() -> Dict[str, Any]:
     if not raw_n2000 or not raw_n2000.get("features"):
         logger.info("PDOK Natura 2000 WFS niet bereikbaar; gebruik lokale natura2000_slim.geojson.")
         raw_n2000 = load_local_json(target_path)
+
+    n2k_url_map = fetch_natura2000_url_map()
 
     enriched_features: List[Dict[str, Any]] = []
     for idx, feat in enumerate(raw_n2000.get("features", [])):
@@ -515,9 +535,8 @@ def enrich_natura2000() -> Dict[str, Any]:
             toelichting = f"{default_advice}{bron_info}"
 
         max_height = 0 if status == "forbidden" else int(override.get("max_height_m", 120))
-        import urllib.parse
-        default_n2k_url = f"https://www.natura2000.nl/zoeken?search_api_fulltext={urllib.parse.quote(str(naam))}"
-        url = override.get("url") or props.get("url") or default_n2k_url
+        direct_url = n2k_url_map.get(str(naam).strip().lower())
+        url = direct_url or override.get("url") or "https://www.natura2000.nl/gebieden"
         default_beheerder = "Rijkswaterstaat" if is_water_area else "Staatsbosbeheer / Natuurmonumenten / Provincie"
         beheerder = override.get("beheerder") or props.get("beheerder") or default_beheerder
 
