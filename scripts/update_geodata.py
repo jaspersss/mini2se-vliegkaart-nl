@@ -477,25 +477,28 @@ def enrich_natura2000() -> Dict[str, Any]:
         status = override.get("status", existing_status)
 
         bescherming = str(props.get("beschermin") or "").strip()
+        besluit_txt = str(props.get("status") or "").strip()
+        staatscour = str(props.get("staatscour") or "").strip()
+        bron_info = f" [{besluit_txt}, Stcrt. {staatscour}]" if ("besluit" in besluit_txt.lower() and staatscour) else ""
 
         if override.get("mini2se_toelichting"):
-            toelichting = override["mini2se_toelichting"]
+            toelichting = f"{override['mini2se_toelichting']}{bron_info}"
         elif props.get("mini2se_toelichting"):
             toelichting = props["mini2se_toelichting"]
         elif "VR" in bescherming:
             toelichting = (
                 f"Vliegen toegestaan? Ja (geen vliegverbod in het Natura 2000-besluit van {naam}), "
                 "maar dit is een vogelgebied: houd >100m afstand van vogels (extra streng in broedseizoen 15 mrt–15 jul). "
-                "Opstijgen? Alleen vanaf openbare grond/wegen; opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten is verboden."
+                f"Opstijgen? Alleen vanaf openbare grond/wegen; opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten is verboden.{bron_info}"
             )
         elif bescherming == "HR":
             toelichting = (
                 f"Vliegen toegestaan? Ja (geen droneverbod in het Natura 2000-besluit van {naam}). "
                 "Let op: houd afstand van wild en verstoor geen dieren. "
-                "Opstijgen? Alleen vanaf openbare grond/wegen; niet opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten."
+                f"Opstijgen? Alleen vanaf openbare grond/wegen; niet opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten.{bron_info}"
             )
         else:
-            toelichting = default_advice
+            toelichting = f"{default_advice}{bron_info}"
 
         max_height = 0 if status == "forbidden" else int(override.get("max_height_m", 120))
         import urllib.parse
