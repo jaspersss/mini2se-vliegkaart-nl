@@ -1,0 +1,181 @@
+{
+  "type": "FeatureCollection",
+  "name": "natura2000_slim",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "83",
+        "naam": "Utrechtse Heuvelrug / Soesterduinen (Lange & Korte Duinen)",
+        "status": "caution",
+        "stiltegebied": false,
+        "max_height_m": 120,
+        "beheerder": "Gemeente Soest / Staatsbosbeheer / Utrechts Landschap",
+        "mini2se_toelichting": "Geen expliciet droneverbod in het Natura 2000-besluit, maar verstoring van fauna (o.a. boomleeuwerik, nachtzwaluw en zandhagedis) is strafbaar. Houd >50-100m afstand van vogels en let op: opstijgen vanaf terrein van Utrechts Landschap of Staatsbosbeheer is zonder toestemming niet toegestaan.",
+        "url": "https://www.natura2000.nl/gebieden/utrecht/kolland-overlangbroek"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.2650, 52.1420],
+            [5.3200, 52.1420],
+            [5.3200, 52.1640],
+            [5.2650, 52.1640],
+            [5.2650, 52.1420]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "57",
+        "naam": "Veluwe",
+        "status": "caution",
+        "stiltegebied": false,
+        "max_height_m": 120,
+        "beheerder": "Staatsbosbeheer / Natuurmonumenten / De Hoge Veluwe",
+        "mini2se_toelichting": "Let op: In Nationale Parken (Hoge Veluwe & Veluwezoom) en op terreinen van Staatsbosbeheer/Natuurmonumenten geldt via de terreinregels een opstijgverbod. Buiten afgesloten parken en buiten militaire oefenterreinen geldt de zorgplicht: verstoor geen edelherten, zwijnen of broedvogels (houd >100m afstand).",
+        "url": "https://www.natura2000.nl/gebieden/gelderland/veluwe"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.6400, 52.0100],
+            [6.0600, 52.0100],
+            [6.0800, 52.3900],
+            [5.6600, 52.3900],
+            [5.6400, 52.0100]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "78",
+        "naam": "Oostvaardersplassen",
+        "status": "forbidden",
+        "stiltegebied": false,
+        "max_height_m": 0,
+        "beheerder": "Staatsbosbeheer (Nationaal Park Nieuw Land)",
+        "mini2se_toelichting": "Strikt verboden voor drones (ook < 250g DJI Mini 2 SE). Kerngebied voor zeearenden, ganzen en watervogels met expliciet verbod in beheerplan en toegangsvoorwaarden.",
+        "url": "https://www.natura2000.nl/gebieden/flevoland/oostvaardersplassen"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.2800, 52.4000],
+            [5.4400, 52.4000],
+            [5.4400, 52.4900],
+            [5.2800, 52.4900],
+            [5.2800, 52.4000]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "94",
+        "naam": "Naardermeer",
+        "status": "forbidden",
+        "stiltegebied": true,
+        "max_height_m": 0,
+        "beheerder": "Natuurmonumenten",
+        "mini2se_toelichting": "Verboden te vliegen: dit Natura 2000-gebied overlapt met een Provinciaal Stiltegebied én heeft een expliciet vliegverbod ter bescherming van kwetsbare moerasvogels.",
+        "url": "https://www.natura2000.nl/gebieden/noord-holland/naardermeer"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.0850, 52.2750],
+            [5.1650, 52.2750],
+            [5.1650, 52.3150],
+            [5.0850, 52.3150],
+            [5.0850, 52.2750]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "1",
+        "naam": "Waddenzee",
+        "status": "forbidden",
+        "stiltegebied": true,
+        "max_height_m": 0,
+        "beheerder": "Rijkswaterstaat / Provincies",
+        "mini2se_toelichting": "In het Natura 2000-beheerplan Waddenzee geldt een strikt verbod op het laten opstijgen, landen en laagvliegen met drones vanwege extreme verstoringsgevoeligheid van wadvogels en zeehonden.",
+        "url": "https://www.natura2000.nl/gebieden/friesland/waddenzee"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.7500, 52.9300],
+            [6.2500, 53.3500],
+            [6.2500, 53.5200],
+            [4.7500, 53.1800],
+            [4.7500, 52.9300]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "112",
+        "naam": "Biesbosch",
+        "status": "forbidden",
+        "stiltegebied": true,
+        "max_height_m": 0,
+        "beheerder": "Staatsbosbeheer (Nationaal Park De Biesbosch)",
+        "mini2se_toelichting": "In Nationaal Park De Biesbosch geldt een strikt droneverbod ter bescherming van broedende zeearenden, visarenden en bevers.",
+        "url": "https://www.natura2000.nl/gebieden/noord-brabant/biesbosch"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.7200, 51.7100],
+            [4.9000, 51.7100],
+            [4.9000, 51.8100],
+            [4.7200, 51.8100],
+            [4.7200, 51.7100]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "gebiedsnummer": "76",
+        "naam": "Eemmeer & Gooimeer Zuidoever",
+        "status": "caution",
+        "stiltegebied": false,
+        "max_height_m": 120,
+        "beheerder": "Rijkswaterstaat / Staatsbosbeheer",
+        "mini2se_toelichting": "Geen expliciet droneverbod in aanwijzingsbesluit, maar belangrijk rustgebied voor watervogels. Houd minimaal 100m afstand van groepen vogels op het water en stijg niet op vanuit rietkragen of SBB-natuurterreinen.",
+        "url": "https://www.natura2000.nl/gebieden/gelderland/veluwerandmeren"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.2400, 52.2550],
+            [5.3900, 52.2550],
+            [5.3900, 52.2950],
+            [5.2400, 52.2950],
+            [5.2400, 52.2550]
+          ]
+        ]
+      }
+    }
+  ]
+}

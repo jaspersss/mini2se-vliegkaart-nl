@@ -1,0 +1,20 @@
+{
+  "name": "Mini2SE Vliegkaart NL",
+  "short_name": "Mini2SE Kaart",
+  "description": "Actuele vliegkaart en regel-engine specifiek voor de DJI Mini 2 SE (< 250g, EU Open Categorie A1) in Nederland.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "nl-NL",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f172a'/%3E%3Ccircle cx='144' cy='144' r='68' fill='none' stroke='%2338bdf8' stroke-width='24'/%3E%3Ccircle cx='368' cy='144' r='68' fill='none' stroke='%2338bdf8' stroke-width='24'/%3E%3Ccircle cx='144' cy='368' r='68' fill='none' stroke='%2338bdf8' stroke-width='24'/%3E%3Ccircle cx='368' cy='368' r='68' fill='none' stroke='%2338bdf8' stroke-width='24'/%3E%3Cpath d='M192 192L320 320M320 192L192 320' stroke='%2394a3b8' stroke-width='24' stroke-linecap='round'/%3E%3Crect x='216' y='200' width='80' height='112' rx='28' fill='%23f8fafc'/%3E%3Ccircle cx='256' cy='230' r='12' fill='%2310b981'/%3E%3C/svg%3E",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

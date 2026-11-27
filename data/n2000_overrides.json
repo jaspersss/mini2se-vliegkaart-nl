@@ -1,0 +1,73 @@
+{
+  "_meta": {
+    "description": "Handmatige kennisbank voor specifieke Natura 2000-gebieden voor drones < 250g (DJI Mini 2 SE, Open Categorie A1).",
+    "default_status": "caution",
+    "default_advice": "Geen expliciet algemeen droneverbod in het Natura 2000-aanwijzingsbesluit, maar het verstoren van beschermde vogels en fauna is wettelijk verboden (zorgplicht Omgevingswet). Houd minimaal 50-100m afstand van dieren, vlieg niet laag over rustplaatsen en let op: opstijgen/landen vanaf terreinen van Staatsbosbeheer, Natuurmonumenten of Provinciale Landschappen is zonder toestemming vaak verboden via de toegangsvoorwaarden."
+  },
+  "overrides": {
+    "1": {
+      "naam": "Waddenzee",
+      "status": "forbidden",
+      "max_height_m": 0,
+      "beheerder": "Rijkswaterstaat / Provincies / Natuurorganisaties",
+      "mini2se_toelichting": "In het Natura 2000-beheerplan Waddenzee geldt een strikt verbod op het laten opstijgen, landen en laagvliegen met drones vanwege extreme verstoringsgevoeligheid van wad- en trekvogels en zeehonden.",
+      "url": "https://www.natura2000.nl/gebieden/friesland/waddenzee"
+    },
+    "57": {
+      "naam": "Veluwe",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Staatsbosbeheer / Natuurmonumenten / Defensie / Het Nationale Park De Hoge Veluwe",
+      "mini2se_toelichting": "Let op: In Nationale Parken (Hoge Veluwe & Veluwezoom) en op terreinen van Staatsbosbeheer/Natuurmonumenten geldt via de terreinregels een opstijg- en vliegverbod. Buiten afgesloten parken is het luchtruim juridisch niet gesloten (tenzij overlappend met Stiltegebied of militair schietterrein zoals ASK Oldebroek/Harskamp), maar geldt streng toezicht op verstoring van edelherten, zwijnen en broedvogels (wespendief, zwarte specht).",
+      "url": "https://www.natura2000.nl/gebieden/gelderland/veluwe"
+    },
+    "78": {
+      "naam": "Oostvaardersplassen",
+      "status": "forbidden",
+      "max_height_m": 0,
+      "beheerder": "Staatsbosbeheer (Nationaal Park Nieuw Land)",
+      "mini2se_toelichting": "Strikt verboden voor drones. De Oostvaardersplassen is een kerngebied voor zeearenden, ganzen en watervogels én overlapt met laagvliegroutes/Lelystad en strikte toegangsregels van Staatsbosbeheer.",
+      "url": "https://www.natura2000.nl/gebieden/flevoland/oostvaardersplassen"
+    },
+    "83": {
+      "naam": "Utrechtse Heuvelrug / Kolland & Overlangbroek / Soesterduinen",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Gemeente Soest / Staatsbosbeheer / Utrechts Landschap",
+      "mini2se_toelichting": "Geen luchtruimsluiting vanuit Natura 2000, maar let op: grote delen van de Utrechtse Heuvelrug vallen onder Provinciaal Stiltegebied (waar gemotoriseerd modelvliegen verboden is) en terreinen van Utrechts Landschap/SBB verbieden opstijgen. Bij Lange Duinen / Korte Duinen (Soest) extra opletten op broedvogels (boomleeuwerik, nachtzwaluw) en zweefvliegverkeer rond voormalig Vliegbasis Soesterberg.",
+      "url": "https://www.natura2000.nl/gebieden/utrecht/kolland-overlangbroek"
+    },
+    "94": {
+      "naam": "Naardermeer",
+      "status": "forbidden",
+      "max_height_m": 0,
+      "beheerder": "Natuurmonumenten",
+      "mini2se_toelichting": "Verboden te vliegen: het Naardermeer is zowel een zeer kwetsbaar Natura 2000-moerasvogelgebied (o.a. purperreiger, zwarte stern) als een aangewezen provinciaal Stiltegebied met streng handhavingsbeleid door Natuurmonumenten.",
+      "url": "https://www.natura2000.nl/gebieden/noord-holland/naardermeer"
+    },
+    "88": {
+      "naam": "Kennemerland-Zuid",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "PWN / Nationaal Park Zuid-Kennemerland / Natuurmonumenten",
+      "mini2se_toelichting": "In het Nationaal Park Zuid-Kennemerland en de Amsterdamse Waterleidingduinen is het opstijgen en vliegen met drones verboden door de terreinbeheerders (PWN/Waternet). Aan het Noordzeestrand buiten het broedseizoen (en buiten CTR Schiphol) gelden de normale A1-regels mits je geen rustende vogels of zeehonden verstoort.",
+      "url": "https://www.natura2000.nl/gebieden/noord-holland/kennemerland-zuid"
+    },
+    "112": {
+      "naam": "Biesbosch",
+      "status": "forbidden",
+      "max_height_m": 0,
+      "beheerder": "Staatsbosbeheer (Nationaal Park De Biesbosch)",
+      "mini2se_toelichting": "In Nationaal Park De Biesbosch geldt een strikt droneverbod ter bescherming van broedende zeearenden, visarenden en bevers. Staatsbosbeheer handhaaft actief op het gehele water- en natuurgebied.",
+      "url": "https://www.natura2000.nl/gebieden/noord-brabant/biesbosch"
+    },
+    "76": {
+      "naam": "Veluwerandmeren (Gooimeer / Eemmeer / Nijkerkernauw)",
+      "status": "caution",
+      "max_height_m": 120,
+      "beheerder": "Rijkswaterstaat / Natuurmonumenten",
+      "mini2se_toelichting": "Belangrijk rust- en foerageergebied voor watervogels (vooral in het winterhalfjaar okt-mrt). Geen algemeen vliegverbod in het luchtruim, maar houd grote afstand (>100m) van groepen dobberende watervogels en rietkragen.",
+      "url": "https://www.natura2000.nl/gebieden/gelderland/veluwerandmeren"
+    }
+  }
+}

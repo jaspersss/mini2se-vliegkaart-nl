@@ -1,0 +1,219 @@
+{
+  "type": "FeatureCollection",
+  "name": "luchtruim_mini2se",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHAM_CTR_INNER",
+        "naam": "Schiphol CTR (Kernzone 1)",
+        "type": "CTR_INNER",
+        "categorie": "Civiele Luchthaven CTR",
+        "status": "forbidden",
+        "max_height_m": 0,
+        "schedule": "H24",
+        "mini2se_toelichting": "Verboden te vliegen in de binnenste CTR-zone van Amsterdam Airport Schiphol voor alle Open Categorie drones (inclusief < 250g A1)."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.6500, 52.2200],
+            [4.8800, 52.2200],
+            [4.9200, 52.3800],
+            [4.7100, 52.4200],
+            [4.6200, 52.3200],
+            [4.6500, 52.2200]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHAM_CTR_OUTER",
+        "naam": "Schiphol CTR (Buitenste Ring)",
+        "type": "CTR_OUTER",
+        "categorie": "Civiele CTR Buitenring",
+        "status": "caution",
+        "max_height_m": 120,
+        "schedule": "DAYLIGHT_ONLY",
+        "mini2se_toelichting": "Buitenste ring van een civiele CTR: onder de vernieuwde Nederlandse zonering voor civiele CTR's zijn vluchten in de Open Categorie onder specifieke voorwaarden toegestaan. Geef altijd direct voorrang aan bemand luchtverkeer en blijf alert op laagvliegende naderende vliegtuigen of traumahelikopters."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.5200, 52.1600],
+            [5.0500, 52.1600],
+            [5.0800, 52.4500],
+            [4.5600, 52.4700],
+            [4.5200, 52.1600]
+          ],
+          [
+            [4.6500, 52.2200],
+            [4.6200, 52.3200],
+            [4.7100, 52.4200],
+            [4.9200, 52.3800],
+            [4.8800, 52.2200],
+            [4.6500, 52.2200]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHGR_MIL_CTR",
+        "naam": "Militaire CTR Gilze-Rijen (EHGZ)",
+        "type": "MIL_CTR",
+        "categorie": "Militaire Luchthaven CTR",
+        "status": "forbidden",
+        "max_height_m": 0,
+        "schedule": "H24",
+        "mini2se_toelichting": "Militaire CTR: volledig verboden voor alle drones in de Open Categorie (inclusief < 250g DJI Mini 2 SE). De versoepeling voor buitenste CTR-ringen geldt NIET voor militaire vliegbases."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.7800, 51.5100],
+            [5.0800, 51.5100],
+            [5.0800, 51.6400],
+            [4.7800, 51.6400],
+            [4.7800, 51.5100]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHSB_GLIDER_SOESTERBERG",
+        "naam": "Zweefvlieggebied Soesterberg (ACZ)",
+        "type": "TIME_BOUND_AIRSPACE",
+        "categorie": "Zweefvliegsector / Voormalige Vliegbasis",
+        "status_active": "caution",
+        "status_inactive": "free",
+        "max_height_active_m": 45,
+        "max_height_inactive_m": 120,
+        "schedule": "WEEKEND_AND_WED_AFTERNOON",
+        "mini2se_toelichting": "Voormalige Vliegbasis Soesterberg: actief zweefvliegterrein (vooral in het weekend, op feestdagen en woensdagmiddag bij daglicht). Tijdens actief lier- en zweefvliegbedrijf niet boven de startbaan vliegen en uiterste voorzichtigheid betrachten. Buiten vlieguren vrij tot 120m (let wel op toegangsregels Utrechts Landschap)."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.2420, 52.1160],
+            [5.3180, 52.1160],
+            [5.3180, 52.1440],
+            [5.2420, 52.1440],
+            [5.2420, 52.1160]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "GLV_V_OIRR_MAASWAAL",
+        "naam": "Militair Laagvlieggebied GLV V (Maas / Waal / Betuwe)",
+        "type": "GLV_LOW_FLY",
+        "categorie": "Militair Laagvlieggebied (GLV)",
+        "status_active": "caution",
+        "status_inactive": "free",
+        "max_height_active_m": 30,
+        "max_height_inactive_m": 120,
+        "schedule": "WEEKDAY_08_23",
+        "mini2se_toelichting": "Militair helikopter-laagvlieggebied (GLV). Actief op maandag t/m donderdag overdag/avond en vrijdag tot 16:30. In het weekend en op feestdagen is dit laagvlieggebied INACTIEF en mag je hier met de DJI Mini 2 SE gewoon tot 120m vliegen. Wanneer actief: verhoogde waakzaamheid / waarnemer verplicht of beperkte hoogte."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.1800, 51.7800],
+            [5.6200, 51.7800],
+            [5.6200, 51.9600],
+            [5.1800, 51.9600],
+            [5.1800, 51.7800]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHP_PALEIS_SOESTDIJK_OMGEVING",
+        "naam": "No-Fly Zone Defensie Kamp van Zeist / Vlasakkers",
+        "type": "MIL_RESTRICTED",
+        "categorie": "Militair Terrein / Heliport",
+        "status": "forbidden",
+        "max_height_m": 0,
+        "schedule": "H24",
+        "mini2se_toelichting": "Permanent verboden luchtruim boven actief militair oefenterrein De Vlasakkers / Kamp van Zeist."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.3220, 52.1320],
+            [5.3650, 52.1320],
+            [5.3650, 52.1540],
+            [5.3220, 52.1540],
+            [5.3220, 52.1320]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHRD_CTR_INNER",
+        "naam": "Rotterdam The Hague CTR (Kernzone)",
+        "type": "CTR_INNER",
+        "categorie": "Civiele Luchthaven CTR",
+        "status": "forbidden",
+        "max_height_m": 0,
+        "schedule": "H24",
+        "mini2se_toelichting": "Verboden te vliegen in de binnenste CTR-zone van Rotterdam The Hague Airport."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.3400, 51.9100],
+            [4.5200, 51.9100],
+            [4.5200, 52.0000],
+            [4.3400, 52.0000],
+            [4.3400, 51.9100]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EHLE_CTR_INNER",
+        "naam": "Lelystad Airport CTR / RMZ",
+        "type": "CTR_INNER",
+        "categorie": "Civiele Luchthaven Zone",
+        "status": "forbidden",
+        "max_height_m": 0,
+        "schedule": "H24",
+        "mini2se_toelichting": "Luchthavenzone Lelystad Airport (EHLE): verboden voor Open Categorie drones wegens intensief General Aviation verkeer."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.4400, 52.4100],
+            [5.6100, 52.4100],
+            [5.6100, 52.5000],
+            [5.4400, 52.5000],
+            [5.4400, 52.4100]
+          ]
+        ]
+      }
+    }
+  ]
+}

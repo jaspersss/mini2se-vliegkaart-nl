@@ -1,0 +1,34 @@
+{
+  "type": "FeatureCollection",
+  "name": "notams_actueel",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "NOTAM_TGB_AMERSFOORT_DEMO",
+        "notam_code": "A1492/26",
+        "naam": "TGB Politie / Defensie Oefening Amersfoort-West",
+        "type": "TGB_NOTAM",
+        "status": "forbidden",
+        "max_height_m": 0,
+        "valid_from": "2026-01-01T00:00:00Z",
+        "valid_to": "2027-12-31T23:59:59Z",
+        "daily_start_hour": 13,
+        "daily_end_hour": 17,
+        "mini2se_toelichting": "Tijdelijk Gebied met Beperkingen (TGB / NOTAM): actief tussen 13:00 en 17:00 lokale tijd wegens laagvliegende politie- en defensiehelikopters. Gedurende dit tijdvak is elke dronevlucht verboden (0m)."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.3400, 52.1550],
+            [5.3880, 52.1550],
+            [5.3880, 52.1780],
+            [5.3400, 52.1780],
+            [5.3400, 52.1550]
+          ]
+        ]
+      }
+    }
+  ]
+}
