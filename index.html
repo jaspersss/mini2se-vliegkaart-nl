@@ -226,11 +226,11 @@
       white-space: nowrap;
     }
 
-    /* Compact Map Switcher Icon Button (Bottom Right, above attribution) */
+    /* Compact Map Switcher Icon Button (Bottom Right, helemaal onderin) */
     .floating-controls {
       position: fixed;
-      right: 10px;
-      bottom: 46px;
+      right: 12px;
+      bottom: 18px;
       z-index: 15;
       display: flex;
       flex-direction: column;
@@ -257,22 +257,54 @@
       transform: scale(0.94);
     }
 
-    /* Map Legend Pill (Left Side) */
+    /* Collapsible Map Legend Pill (Bottom Left) */
     .legend-box {
       position: fixed;
       left: 12px;
-      top: 146px;
+      bottom: 18px;
       z-index: 15;
       background: var(--bg-panel);
       backdrop-filter: blur(10px);
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
-      padding: 8px 10px;
+      padding: 7px 10px;
       font-size: 11px;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
       gap: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .legend-header {
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-items {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 2px;
+    }
+    .legend-box.expanded .legend-items {
+      display: flex;
+    }
+    .disclaimer-micro {
+      position: fixed;
+      left: 50%;
+      bottom: 4px;
+      transform: translateX(-50%);
+      z-index: 12;
+      font-size: 9px;
+      color: rgba(15, 23, 42, 0.7);
+      background: rgba(255, 255, 255, 0.55);
+      padding: 1px 6px;
+      border-radius: 99px;
+      white-space: nowrap;
+      pointer-events: none;
     }
     .legend-item {
       display: flex;
@@ -451,8 +483,8 @@
 
     @media (max-width: 480px) {
       .verdict-title { font-size: 16.5px; }
-      .legend-box { top: auto; bottom: 20px; }
-      .floating-controls { bottom: 48px; right: 10px; }
+      .legend-box { bottom: 20px; }
+      .floating-controls { bottom: 20px; right: 12px; }
     }
     .drone-group-title {
       font-size: 11px;
@@ -522,12 +554,17 @@
     <div id="crosshairLabel" class="crosshair-label">Sleep kaart om punt te checken</div>
   </div>
 
-  <!-- Legend -->
-  <aside class="legend-box" aria-label="Kaartlegenda">
-    <div class="legend-item"><span class="swatch swatch-red"></span> Verboden (CTR 1/2A, Defensie, N2000)</div>
-    <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / Voorwaarden (GLV 30m, N2000)</div>
-    <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
+  <!-- Collapsible Legend -->
+  <aside id="legendBox" class="legend-box" aria-label="Kaartlegenda">
+    <div class="legend-header">🎨 Legenda</div>
+    <div class="legend-items">
+      <div class="legend-item"><span class="swatch swatch-red"></span> Verboden (CTR 1/2A, Defensie, N2000)</div>
+      <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / Voorwaarden (GLV 30m, N2000)</div>
+      <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
+    </div>
   </aside>
+
+  <div class="disclaimer-micro">Met zorg samengesteld • Geen rechten aan te ontlenen (eigen verantwoordelijkheid)</div>
 
   <!-- Floating Basemap Switcher Icon -->
   <div class="floating-controls">
@@ -980,8 +1017,6 @@
       maxPitch: 0,
       attributionControl: false
     });
-
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
     // Blauwe GPS-stip Marker
     const gpsEl = document.createElement("div");
@@ -1589,6 +1624,10 @@
     /*************************************************************************
      * 8. EVENT LISTENERS (KNOPPEN, TIJD-SLIDER, BOTTOM SHEET)
      *************************************************************************/
+    document.getElementById("legendBox").addEventListener("click", () => {
+      document.getElementById("legendBox").classList.toggle("expanded");
+    });
+
     document.getElementById("btnToggleBasemap").addEventListener("click", () => {
       state.usePdokBasemap = !state.usePdokBasemap;
       localStorage.setItem("mini2se_basemap_pdok", String(state.usePdokBasemap));
