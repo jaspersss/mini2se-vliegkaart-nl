@@ -19,6 +19,9 @@
   <!-- SunCalc.js voor exacte Nederlandse UDP/daglichtberekening op GPS-punt -->
   <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
 
+  <!-- Supabase JS Client v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root {
       --bg-dark: #0f172a;
@@ -526,8 +529,11 @@
     <div class="legend-item"><span class="swatch swatch-vlos"></span> 500m VLOS-cirkel</div>
   </aside>
 
-  <!-- Floating Basemap Switcher Icon -->
+  <!-- Floating Basemap & Flights Switcher Icons -->
   <div class="floating-controls">
+    <button id="btnOpenFlights" class="ctrl-btn-icon" type="button" title="Mijn eerdere vluchten &amp; profiel" aria-label="Mijn eerdere vluchten">
+      ✈️
+    </button>
     <button id="btnToggleBasemap" class="ctrl-btn-icon" type="button" title="Wissel kaart (PDOK BRT / OpenStreetMap)" aria-label="Wissel achtergrondkaart">
       🗺️
     </button>
@@ -552,6 +558,17 @@
         <button id="droneModalClose" class="details-modal-close" type="button" aria-label="Sluit drone-kiezer">✕</button>
       </div>
       <div id="droneListBody" class="details-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Flights & Profile Modal -->
+  <div id="flightsModalBackdrop" class="details-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="flightsModalTitle">
+    <div class="details-modal">
+      <div class="details-modal-header">
+        <div id="flightsModalTitle" class="details-modal-title">✈️ Mijn Eerdere Vluchten</div>
+        <button id="flightsModalClose" class="details-modal-close" type="button" aria-label="Sluit vluchten">✕</button>
+      </div>
+      <div id="flightsModalBody" class="details-modal-body"></div>
     </div>
   </div>
 
@@ -1246,6 +1263,37 @@
         }
       });
 
+      // Persoonlijke vluchthistorie (routes & Home Points uit Supabase)
+      map.addSource("flights-routes-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+      map.addLayer({
+        id: "flights-routes-line",
+        type: "line",
+        source: "flights-routes-source",
+        paint: {
+          "line-color": "#0ea5e9",
+          "line-width": 2.8,
+          "line-opacity": 0.9
+        }
+      });
+      map.addSource("flights-homes-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+      map.addLayer({
+        id: "flights-homes-circle",
+        type: "circle",
+        source: "flights-homes-source",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#0ea5e9",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff"
+        }
+      });
+
       // Vlakvulling voor zones (alleen tekenen als er een echte restrictie/beperking geldt)
       map.addLayer({
         id: "zones-fill",
@@ -1704,6 +1752,289 @@
       if (e.target.closest("#droneBadge")) return;
       detailsBackdrop.classList.add("open");
     });
+
+    /*************************************************************************
+     * 9. PERSOONLIJKE VLUCHTHISTORIE (SUPABASE + DJI-LOG-PARSER-JS)
+     *************************************************************************/
+    const SUPABASE_URL = "https://oxroguqltyvbzmumdmyn.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_5qeYIhtvoIb0vKIFtXf-yw_811Bad9i";
+    const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+    let currentUser = null;
+    let userFlights = [];
+    let showFlightsLayer = localStorage.getItem("mini2se_show_flights") !== "false";
+
+    function syncFlightsToMap() {
+      const routeFeatures = [];
+      const homeFeatures = [];
+      if (showFlightsLayer) {
+        for (const fl of userFlights) {
+          if (fl.geojson) {
+            routeFeatures.push({
+              type: "Feature",
+              properties: { id: fl.id, start_time: fl.start_time, max_altitude_m: fl.max_altitude_m, duration_sec: fl.duration_sec },
+              geometry: fl.geojson
+            });
+          }
+          if (Array.isArray(fl.home_point) && fl.home_point.length === 2) {
+            homeFeatures.push({
+              type: "Feature",
+              properties: { id: fl.id },
+              geometry: { type: "Point", coordinates: fl.home_point }
+            });
+          }
+        }
+      }
+      if (map.getSource("flights-routes-source")) {
+        map.getSource("flights-routes-source").setData({ type: "FeatureCollection", features: routeFeatures });
+      }
+      if (map.getSource("flights-homes-source")) {
+        map.getSource("flights-homes-source").setData({ type: "FeatureCollection", features: homeFeatures });
+      }
+    }
+
+    async function loadUserFlights() {
+      if (!sb || !currentUser) {
+        userFlights = [];
+        syncFlightsToMap();
+        return;
+      }
+      const { data, error } = await sb
+        .from("flights")
+        .select("*")
+        .order("start_time", { ascending: false });
+      if (!error && Array.isArray(data)) {
+        userFlights = data;
+        syncFlightsToMap();
+      }
+    }
+
+    function renderFlightsModal() {
+      const body = document.getElementById("flightsModalBody");
+      if (!sb) {
+        body.innerHTML = `<div class="detail-card-body">Supabase client kon niet worden geladen.</div>`;
+        return;
+      }
+
+      if (!currentUser) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <p style="font-size:12.5px;color:#cbd5e1;">Log in of maak een gratis account aan om jouw DJI vluchtlogs (.txt) op te slaan en op de kaart te tonen.</p>
+            <input id="authEmail" type="email" placeholder="E-mailadres" style="padding:10px;border-radius:8px;border:1px solid rgba(148,163,184,0.3);background:#1e293b;color:#fff;font-size:13px;" />
+            <input id="authPassword" type="password" placeholder="Wachtwoord (min. 6 tekens)" style="padding:10px;border-radius:8px;border:1px solid rgba(148,163,184,0.3);background:#1e293b;color:#fff;font-size:13px;" />
+            <div id="authMsg" style="font-size:12px;color:#fbbf24;"></div>
+            <div style="display:flex;gap:8px;">
+              <button id="btnSignIn" type="button" style="flex:1;padding:10px;border-radius:8px;border:none;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;">Inloggen</button>
+              <button id="btnSignUp" type="button" style="flex:1;padding:10px;border-radius:8px;border:1px solid #38bdf8;background:transparent;color:#38bdf8;font-weight:700;cursor:pointer;">Registreren</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnSignIn").addEventListener("click", async () => {
+          const email = document.getElementById("authEmail").value.trim();
+          const password = document.getElementById("authPassword").value;
+          const { data, error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) {
+            document.getElementById("authMsg").textContent = error.message;
+          } else {
+            currentUser = data.user;
+            await loadUserFlights();
+            renderFlightsModal();
+          }
+        });
+        document.getElementById("btnSignUp").addEventListener("click", async () => {
+          const email = document.getElementById("authEmail").value.trim();
+          const password = document.getElementById("authPassword").value;
+          const { data, error } = await sb.auth.signUp({ email, password });
+          if (error) {
+            document.getElementById("authMsg").textContent = error.message;
+          } else {
+            document.getElementById("authMsg").textContent = "Account aangemaakt! Controleer eventueel je e-mail of log direct in.";
+            if (data.user && data.session) {
+              currentUser = data.user;
+              await loadUserFlights();
+              renderFlightsModal();
+            }
+          }
+        });
+        return;
+      }
+
+      const savedDjiKey = (currentUser.user_metadata && currentUser.user_metadata.dji_api_key) || "";
+      const flightsHtml = userFlights.length === 0
+        ? `<div style="font-size:12px;color:#94a3b8;padding:8px 0;">Nog geen vluchten geïmporteerd.</div>`
+        : userFlights.map((fl) => {
+            const dt = new Date(fl.start_time).toLocaleString("nl-NL", { dateStyle: "medium", timeStyle: "short" });
+            const mins = Math.round((fl.duration_sec || 0) / 60);
+            return `
+              <div class="detail-card card-free" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" data-fly-to="${fl.id}">
+                <div>
+                  <div class="detail-card-title">${dt}</div>
+                  <div class="detail-card-body">Duur: ${mins} min &bull; Max hoogte: ${Math.round(fl.max_altitude_m || 0)}m &bull; Max afstand: ${Math.round(fl.max_distance_m || 0)}m</div>
+                </div>
+                <button type="button" data-del-flight="${fl.id}" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">✕</button>
+              </div>
+            `;
+          }).join("");
+
+      body.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#94a3b8;">
+            <span>Ingelogd: <strong style="color:#f8fafc;">${currentUser.email}</strong></span>
+            <button id="btnSignOut" type="button" style="background:transparent;border:1px solid rgba(148,163,184,0.3);color:#cbd5e1;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Uitloggen</button>
+          </div>
+
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#e2e8f0;cursor:pointer;">
+            <input id="chkShowFlights" type="checkbox" ${showFlightsLayer ? "checked" : ""} />
+            Toon mijn eerdere vluchten op de kaart (${userFlights.length})
+          </label>
+
+          <div style="background:rgba(30,41,59,0.7);padding:10px;border-radius:10px;border:1px solid var(--border-subtle);">
+            <div style="font-size:11.5px;font-weight:700;color:#cbd5e1;margin-bottom:5px;">DJI Developer Key (voor .txt decryptie)</div>
+            <div style="display:flex;gap:6px;">
+              <input id="inputDjiKey" type="password" value="${savedDjiKey}" placeholder="Plak je 32-karakter DJI App Key" style="flex:1;padding:7px 9px;border-radius:7px;border:1px solid rgba(148,163,184,0.3);background:#0f172a;color:#fff;font-size:12px;" />
+              <button id="btnSaveDjiKey" type="button" style="padding:7px 10px;border-radius:7px;border:none;background:#0284c7;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Opslaan</button>
+            </div>
+          </div>
+
+          <input id="djiFileInput" type="file" accept=".txt" multiple style="display:none;" />
+          <button id="btnImportFlights" type="button" style="padding:10px;border-radius:10px;border:none;background:#059669;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
+            + Vluchten importeren (.txt)
+          </button>
+          <div id="importStatus" style="font-size:12px;color:#38bdf8;"></div>
+
+          <div style="max-height:220px;overflow-y:auto;">${flightsHtml}</div>
+        </div>
+      `;
+
+      document.getElementById("btnSignOut").addEventListener("click", async () => {
+        await sb.auth.signOut();
+        currentUser = null;
+        userFlights = [];
+        syncFlightsToMap();
+        renderFlightsModal();
+      });
+
+      document.getElementById("chkShowFlights").addEventListener("change", (e) => {
+        showFlightsLayer = e.target.checked;
+        localStorage.setItem("mini2se_show_flights", String(showFlightsLayer));
+        syncFlightsToMap();
+      });
+
+      document.getElementById("btnSaveDjiKey").addEventListener("click", async () => {
+        const key = document.getElementById("inputDjiKey").value.trim();
+        const { data, error } = await sb.auth.updateUser({ data: { dji_api_key: key } });
+        if (!error && data.user) {
+          currentUser = data.user;
+          document.getElementById("importStatus").textContent = "DJI Key opgeslagen in jouw account.";
+        }
+      });
+
+      document.getElementById("btnImportFlights").addEventListener("click", () => {
+        document.getElementById("djiFileInput").click();
+      });
+
+      document.getElementById("djiFileInput").addEventListener("change", async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        const statusEl = document.getElementById("importStatus");
+        const djiKey = document.getElementById("inputDjiKey").value.trim();
+        if (!djiKey) {
+          statusEl.textContent = "Vul eerst je DJI Developer Key in en klik op Opslaan.";
+          return;
+        }
+        statusEl.textContent = `Parser laden en ${files.length} bestand(en) verwerken...`;
+        try {
+          const { DJILog } = await import("https://esm.sh/dji-log-parser-js@latest");
+          let imported = 0;
+          for (const file of files) {
+            const buf = new Uint8Array(await file.arrayBuffer());
+            const parser = new DJILog(buf);
+            let keychains = [];
+            if (parser.version >= 13) {
+              keychains = await parser.fetchKeychains(djiKey);
+            }
+            const frames = parser.frames(keychains);
+            const coords = [];
+            let maxAlt = 0;
+            let maxDist = 0;
+            let homePt = null;
+            for (let i = 0; i < frames.length; i += 3) {
+              const osd = frames[i].osd;
+              if (osd && osd.longitude && osd.latitude) {
+                coords.push([Number(osd.longitude.toFixed(5)), Number(osd.latitude.toFixed(5))]);
+                if (osd.height > maxAlt) maxAlt = osd.height;
+              }
+              if (frames[i].home && frames[i].home.longitude && frames[i].home.latitude && !homePt) {
+                homePt = [Number(frames[i].home.longitude.toFixed(5)), Number(frames[i].home.latitude.toFixed(5))];
+              }
+            }
+            if (coords.length >= 2) {
+              const details = parser.details || {};
+              const startTime = details.startTime ? new Date(details.startTime).toISOString() : new Date(file.lastModified).toISOString();
+              const flightKey = `${startTime}_${details.aircraftSn || file.name}`;
+              await sb.from("flights").upsert({
+                user_id: currentUser.id,
+                flight_key: flightKey,
+                start_time: startTime,
+                duration_sec: Math.round(details.totalTime || 0),
+                max_altitude_m: details.maxHeight || maxAlt,
+                max_distance_m: details.maxHorizontalDistance || maxDist,
+                home_point: homePt || coords[0],
+                geojson: { type: "LineString", coordinates: coords }
+              }, { onConflict: "user_id,flight_key" });
+              imported++;
+            }
+          }
+          await loadUserFlights();
+          renderFlightsModal();
+          document.getElementById("importStatus").textContent = `${imported} vlucht(en) succesvol geïmporteerd!`;
+        } catch (err) {
+          statusEl.textContent = `Fout bij importeren: ${err.message || err}`;
+        }
+      });
+
+      body.querySelectorAll("[data-fly-to]").forEach((el) => {
+        el.addEventListener("click", (ev) => {
+          if (ev.target.closest("[data-del-flight]")) return;
+          const fid = el.getAttribute("data-fly-to");
+          const fl = userFlights.find((x) => x.id === fid);
+          if (fl && fl.home_point) {
+            document.getElementById("flightsModalBackdrop").classList.remove("open");
+            map.flyTo({ center: fl.home_point, zoom: 14, duration: 700 });
+          }
+        });
+      });
+
+      body.querySelectorAll("[data-del-flight]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const fid = btn.getAttribute("data-del-flight");
+          await sb.from("flights").delete().eq("id", fid);
+          await loadUserFlights();
+          renderFlightsModal();
+        });
+      });
+    }
+
+    const flightsBackdrop = document.getElementById("flightsModalBackdrop");
+    document.getElementById("btnOpenFlights").addEventListener("click", () => {
+      renderFlightsModal();
+      flightsBackdrop.classList.add("open");
+    });
+    document.getElementById("flightsModalClose").addEventListener("click", () => {
+      flightsBackdrop.classList.remove("open");
+    });
+    flightsBackdrop.addEventListener("click", (e) => {
+      if (e.target === flightsBackdrop) flightsBackdrop.classList.remove("open");
+    });
+
+    if (sb) {
+      sb.auth.getSession().then(async ({ data }) => {
+        if (data && data.session && data.session.user) {
+          currentUser = data.session.user;
+          await loadUserFlights();
+        }
+      });
+    }
 
     document.getElementById("detailsModalClose").addEventListener("click", () => {
       detailsBackdrop.classList.remove("open");
