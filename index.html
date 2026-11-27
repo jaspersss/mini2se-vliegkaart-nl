@@ -1268,7 +1268,20 @@
     });
 
     map.on("click", (e) => {
-      map.easeTo({ center: [e.lngLat.lng, e.lngLat.lat], duration: 350 });
+      const clickedLngLat = [e.lngLat.lng, e.lngLat.lat];
+      const clickResult = evaluateLocationAndTime(clickedLngLat, new Date());
+      const hasZoneAtClick =
+        clickResult.status !== "free" ||
+        (clickResult.findings.length > 0 &&
+          clickResult.findings[0].title !== "Vrij Luchtruim (Klasse G) — Open Categorie A1");
+
+      map.easeTo({ center: clickedLngLat, duration: 350 });
+
+      if (hasZoneAtClick) {
+        state.inspectedLngLat = clickedLngLat;
+        refreshEvaluationAndUI();
+        document.getElementById("detailsModalBackdrop").classList.add("open");
+      }
     });
 
     /*************************************************************************
