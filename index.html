@@ -929,6 +929,27 @@
         });
       }
 
+      // 7. Check of er Spoor, Snelweg of Hoogspanning in de 500m VLOS-cirkel ligt (puur informatief, geen kleurwijziging)
+      const infraHits = [];
+      if (typeof map !== "undefined" && map.loaded && map.loaded() && map.getZoom() >= 12.5) {
+        try {
+          const [cLng, cLat] = lngLat;
+          const dLat = 0.0045; // ~500m
+          const dLng = 0.0073; // ~500m op NL-breedtegraad
+          const sw = map.project([cLng - dLng, cLat - dLat]);
+          const ne = map.project([cLng + dLng, cLat + dLat]);
+          const bbox = [[Math.min(sw.x, ne.x), Math.min(sw.y, ne.y)], [Math.max(sw.x, ne.x), Math.max(sw.y, ne.y)]];
+
+          const railFeats = map.getLayer("infra-rail-base") ? map.queryRenderedFeatures(bbox, { layers: ["infra-rail-base"] }) : [];
+          const hwFeats = map.getLayer("infra-motorway-base") ? map.queryRenderedFeatures(bbox, { layers: ["infra-motorway-base"] }) : [];
+          const pwrFeats = map.getLayer("infra-power-line") ? map.queryRenderedFeatures(bbox, { layers: ["infra-power-line"] }) : [];
+
+          if (railFeats.length > 0) infraHits.push("Spoorlijn");
+          if (hwFeats.length > 0) infraHits.push("Snelweg");
+          if (pwrFeats.length > 0) infraHits.push("Hoogspanning");
+        } catch (_) {}
+      }
+
       // Hoofdconclusie samenvatten voor de Top Status Banner (toon alle overlappende bijzonderheden!)
       let headline = "🟢 VRIJ OM TE VLIEGEN";
       const hasDefaultFreeOnly =
@@ -941,8 +962,12 @@
       }
 
       const relevantTitles = hasDefaultFreeOnly
-        ? ["Geen actieve restricties voor DJI Mini 2 SE (<250g) op dit punt. (Tik hier voor details)"]
+        ? ["Geen actieve restricties voor DJI Mini 2 SE (<250g) op dit punt."]
         : findings.map((f) => f.title);
+
+      if (infraHits.length > 0) {
+        relevantTitles.push(`In 500m VLOS-cirkel: ${infraHits.join(", ")}`);
+      }
       const subline = relevantTitles.join(" • ");
 
       return {
