@@ -489,6 +489,57 @@ def enrich_natura2000() -> Dict[str, Any]:
     return {"type": "FeatureCollection", "name": "natura2000_slim", "features": enriched_features}
 
 
+def fetch_hoogspanning_osm() -> Dict[str, Any]:
+    """Haalt Nederlandse hoogspanningslijnen (power=line) op uit OpenStreetMap via 6 kleine tegels."""
+    import urllib.parse
+    tiles = [
+        (50.7, 51.7, 3.3, 5.4),
+        (50.7, 51.7, 5.4, 7.3),
+        (51.7, 52.7, 3.3, 5.4),
+        (51.7, 52.7, 5.4, 7.3),
+        (52.7, 53.6, 3.3, 5.4),
+        (52.7, 53.6, 5.4, 7.3),
+    ]
+    seen_ids = set()
+    features: List[Dict[str, Any]] = []
+
+    for s, n, w, e in tiles:
+        query = f'[out:json][timeout:30];way["power"="line"]({s},{w},{n},{e});out geom;'
+        data = urllib.parse.urlencode({"data": query}).encode("utf-8")
+        req = urllib.request.Request(
+            "https://overpass-api.de/api/interpreter",
+            data=data,
+            headers={"User-Agent": "Mini2SE-Vliegkaart-NL/2.0"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=35) as resp:
+                if resp.status != 200:
+                    continue
+                d = json.loads(resp.read().decode("utf-8"))
+                for el in d.get("elements", []):
+                    eid = el.get("id")
+                    geom = el.get("geometry")
+                    if not eid or not geom or eid in seen_ids:
+                        continue
+                    seen_ids.add(eid)
+                    coords = [[round(pt["lon"], 4), round(pt["lat"], 4)] for pt in geom]
+                    if len(coords) >= 2:
+                        features.append({
+                            "type": "Feature",
+                            "properties": {"id": eid},
+                            "geometry": {"type": "LineString", "coordinates": coords},
+                        })
+        except Exception as exc:
+            logger.warning("Overpass tegel (%s,%s) overgeslagen: %s", s, w, exc)
+
+    if not features:
+        logger.warning("Overpass niet bereikbaar; behoud bestaande hoogspanning.geojson.")
+        return load_local_json(DATA_DIR / "hoogspanning.geojson")
+
+    logger.info("Hoogspanningslijnen opgehaald uit OSM: %d lijnen", len(features))
+    return {"type": "FeatureCollection", "name": "hoogspanning", "features": features}
+
+
 def main() -> None:
     logger.info("Start Mini2SE Vliegkaart NL GeoJSON data-pipeline (GoDrone ED-318 Gelaagde CTR's + PDOK Natura 2000)...")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -499,11 +550,16 @@ def main() -> None:
     # we houden het bestand leeg zodat gebieden zoals Eemland of Kockengen niet onterecht rood kleuren.
     stilte_fc = {"type": "FeatureCollection", "name": "stiltegebieden", "features": []}
 
+    # 4. Hoogspanningslijnen uit OpenStreetMap (via 6 compacte Overpass-tegels zodat er geen timeout optreedt)
+    power_fc = fetch_hoogspanning_osm()
+
     manifest_files: Dict[str, Any] = {}
     manifest_files["luchtruim_mini2se.geojson"] = save_geojson_if_changed(DATA_DIR / "luchtruim_mini2se.geojson", luchtruim_fc)
     manifest_files["notams_actueel.geojson"] = save_geojson_if_changed(DATA_DIR / "notams_actueel.geojson", notams_fc)
     manifest_files["natura2000_slim.geojson"] = save_geojson_if_changed(DATA_DIR / "natura2000_slim.geojson", n2000_fc)
     manifest_files["stiltegebieden.geojson"] = save_geojson_if_changed(DATA_DIR / "stiltegebieden.geojson", stilte_fc)
+    if power_fc.get("features"):
+        manifest_files["hoogspanning.geojson"] = save_geojson_if_changed(DATA_DIR / "hoogspanning.geojson", power_fc)
 
     meta_path = DATA_DIR / "meta.json"
     meta_doc = {"files": manifest_files}

@@ -1143,6 +1143,24 @@
         paint: { "line-color": "#ffffff", "line-width": 1.8, "line-dasharray": [2, 2], "line-opacity": 0.95 }
       });
 
+      // Hoogspanningslijnen uit OpenStreetMap (paarse stippellijn vanaf zoom 12.5)
+      map.addSource("hoogspanning-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+      map.addLayer({
+        id: "infra-power-line",
+        type: "line",
+        source: "hoogspanning-source",
+        minzoom: 12.5,
+        paint: {
+          "line-color": "#9333ea",
+          "line-width": 2.2,
+          "line-dasharray": [2, 2],
+          "line-opacity": 0.85
+        }
+      });
+
       // Vlakvulling voor zones (alleen tekenen als er een echte restrictie/beperking geldt)
       map.addLayer({
         id: "zones-fill",
@@ -1325,11 +1343,12 @@
         // Offline: we vallen terug op IndexedDB
       }
 
-      const [luchtruim, natura2000, stiltegebieden, notams] = await Promise.all([
+      const [luchtruim, natura2000, stiltegebieden, notams, hoogspanning] = await Promise.all([
         fetchGeoJSONIfChanged("luchtruim_mini2se.geojson", remoteMeta, FALLBACK_LUCHTRUIM),
         fetchGeoJSONIfChanged("natura2000_slim.geojson", remoteMeta, FALLBACK_NATURA2000),
         fetchGeoJSONIfChanged("stiltegebieden.geojson", remoteMeta, FALLBACK_STILTEGEBIEDEN),
-        fetchGeoJSONIfChanged("notams_actueel.geojson", remoteMeta, FALLBACK_NOTAMS)
+        fetchGeoJSONIfChanged("notams_actueel.geojson", remoteMeta, FALLBACK_NOTAMS),
+        fetchGeoJSONIfChanged("hoogspanning.geojson", remoteMeta, { type: "FeatureCollection", features: [] })
       ]);
 
       state.datasets.luchtruim = luchtruim.data;
@@ -1339,6 +1358,9 @@
 
       if (map.getSource("zones-source")) {
         map.getSource("zones-source").setData(buildRenderableZonesGeoJSON(state.simTimestamp));
+      }
+      if (map.getSource("hoogspanning-source") && hoogspanning && hoogspanning.data) {
+        map.getSource("hoogspanning-source").setData(hoogspanning.data);
       }
     }
 
