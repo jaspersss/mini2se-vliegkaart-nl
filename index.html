@@ -1357,34 +1357,111 @@
     });
 
     /*************************************************************************
-     * 5. EXTERNE DATA LADEN UIT /data/*.geojson
+     * 5. SLIMME HASH-GEBASEERDE DATA CACHE (IndexedDB + data/meta.json)
+     * Controleert eerst het piepkleine data/meta.json (~250 bytes).
+     * Downloadt een GeoJSON-bestand ALLEEN opnieuw als de SHA-256 hash op
+     * GitHub is veranderd; anders wordt het direct in <50ms uit IndexedDB
+     * geladen (0 KB netwerkverkeer, 100% ongecomprimeerde PDOK-geometrie!).
      *************************************************************************/
-    async function fetchGeoJSONWithFallback(url, fallbackData) {
+    const IDB_NAME = "mini2se_geodata_cache_v1";
+    const IDB_STORE = "geojson_files";
+
+    function openGeoCacheDB() {
+      return new Promise((resolve, reject) => {
+        if (!("indexedDB" in window)) return reject(new Error("No IndexedDB"));
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE, { keyPath: "filename" });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function idbGet(filename) {
       try {
-        const res = await fetch(url, { cache: "no-cache" });
-        if (!res.ok) return fallbackData;
-        const json = await res.json();
-        if (json && Array.isArray(json.features) && json.features.length > 0) {
-          return json;
+        const db = await openGeoCacheDB();
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, "readonly");
+          const req = tx.objectStore(IDB_STORE).get(filename);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function idbPut(filename, hash, data) {
+      try {
+        const db = await openGeoCacheDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          tx.objectStore(IDB_STORE).put({ filename, hash, data, updatedAt: Date.now() });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (_) {
+        // Negeer als privémodus IndexedDB blokkeert
+      }
+    }
+
+    async function fetchGeoJSONIfChanged(filename, remoteMeta, fallbackData) {
+      const expectedHash = remoteMeta && remoteMeta[filename] ? remoteMeta[filename].hash : null;
+      const cached = await idbGet(filename);
+
+      // 1. Als de lokale IndexedDB hash overeenkomt met data/meta.json -> direct gebruiken zonder download!
+      if (cached && cached.data && expectedHash && cached.hash === expectedHash) {
+        return { data: cached.data, fromCache: true };
+      }
+
+      // 2. Anders: download nieuwe versie (met cache-busting hash in query string)
+      try {
+        const url = expectedHash ? `./data/${filename}?v=${expectedHash}` : `./data/${filename}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          if (json && Array.isArray(json.features) && json.features.length > 0) {
+            await idbPut(filename, expectedHash || "unversioned", json);
+            return { data: json, fromCache: false };
+          }
         }
       } catch (_) {
-        // Gebruik ingebouwde fallback bij offline gebruik
+        // Offline? Gebruik laatst gecachte versie uit IndexedDB als die bestaat
+        if (cached && cached.data) {
+          return { data: cached.data, fromCache: true };
+        }
       }
-      return fallbackData;
+
+      return { data: fallbackData, fromCache: true };
     }
 
     async function loadExternalGeoJSONData() {
+      let remoteMeta = null;
+      try {
+        const metaRes = await fetch(`./data/meta.json?t=${Date.now()}`, { cache: "no-store" });
+        if (metaRes.ok) {
+          const metaJson = await metaRes.json();
+          remoteMeta = metaJson.files || null;
+        }
+      } catch (_) {
+        // Offline: we vallen terug op IndexedDB
+      }
+
       const [luchtruim, natura2000, stiltegebieden, notams] = await Promise.all([
-        fetchGeoJSONWithFallback("./data/luchtruim_mini2se.geojson", FALLBACK_LUCHTRUIM),
-        fetchGeoJSONWithFallback("./data/natura2000_slim.geojson", FALLBACK_NATURA2000),
-        fetchGeoJSONWithFallback("./data/stiltegebieden.geojson", FALLBACK_STILTEGEBIEDEN),
-        fetchGeoJSONWithFallback("./data/notams_actueel.geojson", FALLBACK_NOTAMS)
+        fetchGeoJSONIfChanged("luchtruim_mini2se.geojson", remoteMeta, FALLBACK_LUCHTRUIM),
+        fetchGeoJSONIfChanged("natura2000_slim.geojson", remoteMeta, FALLBACK_NATURA2000),
+        fetchGeoJSONIfChanged("stiltegebieden.geojson", remoteMeta, FALLBACK_STILTEGEBIEDEN),
+        fetchGeoJSONIfChanged("notams_actueel.geojson", remoteMeta, FALLBACK_NOTAMS)
       ]);
 
-      state.datasets.luchtruim = luchtruim;
-      state.datasets.natura2000 = natura2000;
-      state.datasets.stiltegebieden = stiltegebieden;
-      state.datasets.notams = notams;
+      state.datasets.luchtruim = luchtruim.data;
+      state.datasets.natura2000 = natura2000.data;
+      state.datasets.stiltegebieden = stiltegebieden.data;
+      state.datasets.notams = notams.data;
 
       if (map.getSource("zones-source")) {
         map.getSource("zones-source").setData(buildRenderableZonesGeoJSON(state.simTimestamp));

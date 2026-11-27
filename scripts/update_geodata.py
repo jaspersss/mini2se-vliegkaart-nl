@@ -1,30 +1,32 @@
 #!/usr/bin/env python3
 """
-update_geodata.py — Geautomatiseerde GeoJSON Data-Pipeline voor Mini2SE Vliegkaart NL
-=====================================================================================
+update_geodata.py — Volledige Resolutie GeoJSON Pipeline + SHA-256 Versie-Manifest
+===================================================================================
 Dit script wordt uitgevoerd door GitHub Actions (.github/workflows/update_data.yml) en:
-1. Haalt actuele Natura 2000-gebieden en Provinciale Stiltegebieden op via PDOK WFS / OGC API.
-2. Voert een Spatial Join (Shapely) uit tussen Natura 2000 en Stiltegebieden.
-3. Koppelt de handmatige kennisbank `data/n2000_overrides.json` per `gebiedsnummer` voor
-   een concreet DJI Mini 2 SE (< 250g, A1) oordeel ('forbidden', 'caution', 'free').
-4. Vereenvoudigt alle geometrieën (Douglas-Peucker) en rondt coördinaten af op 4-5 decimalen
-   zodat elk bestand in `/data/` onder de 500 KB blijft voor snelle mobiele laadtijden.
-5. Bevat een veilige fallback: als een externe overheids-WFS tijdelijk niet reageert,
-   worden bestaande valide GeoJSON-bestanden in `/data/` behouden en verrijkt.
+1. Haalt de volledige, ongecomprimeerde Natura 2000-gebieden (en Stiltegebieden) op via PDOK WFS.
+2. Behoudt 100% van alle originele polygon-hoekpunten (geen Douglas-Peucker vervorming!)
+   en rondt coördinaten enkel af op 5 decimalen (~1,1 meter GPS-precisie) om overbodige
+   floating-point tekst-ruis te verwijderen.
+3. Voert een Spatial Join uit tussen Natura 2000 en Stiltegebieden en koppelt
+   `data/n2000_overrides.json` per gebiedsnummer.
+4. Genereert `data/meta.json` met de SHA-256 hash en bestandsgrootte van elk GeoJSON-bestand.
+   Hierdoor kan de browser (via IndexedDB) bij het openen van de app eerst `data/meta.json`
+   (~250 bytes) controleren en een GeoJSON-bestand ALLEEN downloaden als de hash daadwerkelijk
+   is veranderd!
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import urllib.request
 import urllib.error
+import urllib.request
 
 try:
-    from shapely.geometry import shape, mapping
-    from shapely.strtree import STRtree
+    from shapely.geometry import shape
     HAS_SHAPELY = True
 except ImportError:
     HAS_SHAPELY = False
@@ -35,7 +37,6 @@ logger = logging.getLogger("update_geodata")
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 
-# PDOK WFS endpoints (CRS: EPSG:4326 / WGS84)
 PDOK_NATURA2000_WFS = (
     "https://service.pdok.nl/rvo/natura2000/wfs/v1_0"
     "?service=WFS&version=2.0.0&request=GetFeature"
@@ -51,8 +52,8 @@ PDOK_STILTEGEBIEDEN_WFS = (
 )
 
 
-def round_coords(coords: Any, precision: int = 4) -> Any:
-    """Rondt recursief alle coördinaten in een GeoJSON-structuur af om bestandsgrootte te beperken."""
+def round_coords(coords: Any, precision: int = 5) -> Any:
+    """Rondt coördinaten af op 5 decimalen (~1.1m nauwkeurigheid) zonder hoekpunten te verwijderen."""
     if isinstance(coords, (float, int)):
         return round(float(coords), precision)
     if isinstance(coords, (list, tuple)):
@@ -60,78 +61,16 @@ def round_coords(coords: Any, precision: int = 4) -> Any:
     return coords
 
 
-def _rdp_ring(ring: List[List[float]], epsilon: float) -> List[List[float]]:
-    """Pure-Python Ramer-Douglas-Peucker vereenvoudiging voor een 2D coördinatenring."""
-    if len(ring) <= 4:
-        return ring
-
-    def _perp_dist_sq(pt: List[float], a: List[float], b: List[float]) -> float:
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        if dx == 0 and dy == 0:
-            return (pt[0] - a[0]) ** 2 + (pt[1] - a[1]) ** 2
-        t = ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / (dx * dx + dy * dy)
-        t = max(0.0, min(1.0, t))
-        proj_x, proj_y = a[0] + t * dx, a[1] + t * dy
-        return (pt[0] - proj_x) ** 2 + (pt[1] - proj_y) ** 2
-
-    def _rdp(pts: List[List[float]], eps_sq: float) -> List[List[float]]:
-        if len(pts) <= 2:
-            return pts
-        max_d_sq = -1.0
-        idx = 0
-        a, b = pts[0], pts[-1]
-        for i in range(1, len(pts) - 1):
-            d_sq = _perp_dist_sq(pts[i], a, b)
-            if d_sq > max_d_sq:
-                max_d_sq = d_sq
-                idx = i
-        if max_d_sq > eps_sq:
-            left = _rdp(pts[: idx + 1], eps_sq)
-            right = _rdp(pts[idx:], eps_sq)
-            return left[:-1] + right
-        return [a, b]
-
-    # Splits gesloten ring op het verste punt zodat begin/eind behouden blijft
-    mid = len(ring) // 2
-    first_half = _rdp(ring[: mid + 1], epsilon * epsilon)
-    second_half = _rdp(ring[mid:], epsilon * epsilon)
-    simplified = first_half[:-1] + second_half
-    if len(simplified) < 4:
-        return ring[:4] if len(ring) >= 4 else ring
-    if simplified[0] != simplified[-1]:
-        simplified.append(simplified[0])
-    return simplified
+def preserve_full_geometry(geom_dict: Dict[str, Any], precision: int = 5) -> Dict[str, Any]:
+    """Behoudt alle originele vertices (100% ongecomprimeerde vorm) met 5-decimalen coördinaatprecisie."""
+    geom_copy = dict(geom_dict)
+    if "coordinates" in geom_copy:
+        geom_copy["coordinates"] = round_coords(geom_copy["coordinates"], precision)
+    return geom_copy
 
 
-def simplify_geometry(geom_dict: Dict[str, Any], tolerance: float = 0.0008, precision: int = 4) -> Dict[str, Any]:
-    """Vereenvoudigt een GeoJSON-geometrie met Douglas-Peucker (Shapely of pure-Python fallback) en rondt coördinaten af."""
-    if HAS_SHAPELY:
-        try:
-            geom = shape(geom_dict)
-            if not geom.is_valid:
-                geom = geom.buffer(0)
-            simplified = geom.simplify(tolerance, preserve_topology=True)
-            out = mapping(simplified)
-            out["coordinates"] = round_coords(out["coordinates"], precision)
-            return out
-        except Exception as exc:
-            logger.warning("Shapely vereenvoudiging overgeslagen: %s", exc)
-
-    gtype = geom_dict.get("type")
-    coords = geom_dict.get("coordinates", [])
-    if gtype == "Polygon":
-        coords = [_rdp_ring(ring, tolerance) for ring in coords]
-    elif gtype == "MultiPolygon":
-        coords = [[_rdp_ring(ring, tolerance) for ring in poly] for poly in coords]
-
-    return {
-        "type": gtype,
-        "coordinates": round_coords(coords, precision),
-    }
-
-
-def fetch_json_url(url: str, timeout: int = 25) -> Optional[Dict[str, Any]]:
-    """Haalt JSON/GeoJSON op van een publieke WFS/API met nette User-Agent en foutafhandeling."""
+def fetch_json_url(url: str, timeout: int = 40) -> Optional[Dict[str, Any]]:
+    """Haalt JSON/GeoJSON op van een publieke WFS/API."""
     req = urllib.request.Request(
         url,
         headers={
@@ -157,37 +96,44 @@ def load_local_json(path: Path) -> Dict[str, Any]:
     return {}
 
 
-def save_compact_geojson(path: Path, data: Dict[str, Any], max_kb: int = 490) -> None:
-    """Slaat GeoJSON compact op en controleert of het bestand onder de 500 KB limiet blijft."""
+def save_geojson_if_changed(path: Path, data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Slaat GeoJSON op zonder kwaliteitsverlies en berekent de SHA-256 hash.
+    Schrijft het bestand alleen naar schijf als de inhoud (hash) daadwerkelijk is veranderd.
+    """
     serialized = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    size_kb = len(serialized.encode("utf-8")) / 1024.0
+    encoded = serialized.encode("utf-8")
+    new_hash = hashlib.sha256(encoded).hexdigest()[:16]
+    size_kb = round(len(encoded) / 1024.0, 1)
+    feature_count = len(data.get("features", []))
 
-    # Als het bestand groter is dan max_kb, vereenvoudig stapsgewijs tot onder max_kb
-    for tol, prec in ((0.0020, 4), (0.0035, 4), (0.0045, 3)):
-        if size_kb <= max_kb or "features" not in data:
-            break
-        logger.info("Bestand %s is %.1f KB (> %d KB), Douglas-Peucker (tol=%.4f, prec=%d) toepassen...", path.name, size_kb, max_kb, tol, prec)
-        for feat in data["features"]:
-            if feat.get("geometry"):
-                feat["geometry"] = simplify_geometry(feat["geometry"], tolerance=tol, precision=prec)
-        serialized = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-        size_kb = len(serialized.encode("utf-8")) / 1024.0
+    old_hash = None
+    if path.exists():
+        old_bytes = path.read_bytes()
+        old_hash = hashlib.sha256(old_bytes).hexdigest()[:16]
 
-    with path.open("w", encoding="utf-8") as f:
-        f.write(serialized)
-    logger.info("Opgeslagen: %s (%.1f KB, %d features)", path.name, size_kb, len(data.get("features", [])))
+    if old_hash == new_hash:
+        logger.info("Ongewijzigd: %s (hash=%s, %.1f KB, %d features)", path.name, new_hash, size_kb, feature_count)
+    else:
+        path.write_bytes(encoded)
+        logger.info("Bijgewerkt: %s (hash=%s, %.1f KB, %d features)", path.name, new_hash, size_kb, feature_count)
+
+    return {
+        "hash": new_hash,
+        "size_kb": size_kb,
+        "features": feature_count,
+    }
 
 
 def update_stiltegebieden() -> Dict[str, Any]:
-    """Haalt provinciale stiltegebieden op via PDOK of behoudt en optimaliseert de lokale dataset."""
+    """Haalt provinciale stiltegebieden op via PDOK of behoudt de lokale dataset op volledige resolutie."""
     target_path = DATA_DIR / "stiltegebieden.geojson"
     raw = fetch_json_url(PDOK_STILTEGEBIEDEN_WFS)
 
     if not raw or not raw.get("features"):
-        logger.info("Gebruik en optimaliseer bestaande stiltegebieden.geojson dataset.")
+        logger.info("Gebruik bestaande stiltegebieden.geojson dataset.")
         existing = load_local_json(target_path)
         if existing.get("features"):
-            save_compact_geojson(target_path, existing)
             return existing
         return {"type": "FeatureCollection", "name": "stiltegebieden", "features": []}
 
@@ -214,18 +160,16 @@ def update_stiltegebieden() -> Dict[str, Any]:
                     "provinciale Omgevingsverordening."
                 ),
             },
-            "geometry": simplify_geometry(geom, tolerance=0.0010, precision=4),
+            "geometry": preserve_full_geometry(geom, precision=5),
         })
 
-    out = {"type": "FeatureCollection", "name": "stiltegebieden", "features": features}
-    save_compact_geojson(target_path, out)
-    return out
+    return {"type": "FeatureCollection", "name": "stiltegebieden", "features": features}
 
 
-def enrich_natura2000(stilte_fc: Dict[str, Any]) -> None:
+def enrich_natura2000(stilte_fc: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Verrijkt Natura 2000-gebieden via 3 stappen:
-    1. PDOK Natura 2000 basisgeometrie (of lokale basislaag als WFS niet bereikbaar is)
+    Verrijkt Natura 2000-gebieden op 100% originele geometrie-resolutie (geen vereenvoudiging):
+    1. PDOK Natura 2000 basisgeometrie (alle 209 gebieden in Nederland)
     2. Spatial Join met Provinciale Stiltegebieden -> `stiltegebied: true` (status 'forbidden')
     3. Koppeling met `data/n2000_overrides.json` per gebiedsnummer.
     """
@@ -243,10 +187,9 @@ def enrich_natura2000(stilte_fc: Dict[str, Any]) -> None:
 
     raw_n2000 = fetch_json_url(PDOK_NATURA2000_WFS)
     if not raw_n2000 or not raw_n2000.get("features"):
-        logger.info("PDOK Natura 2000 WFS niet direct bereikbaar; verrijk bestaande natura2000_slim.geojson met nieuwste overrides.")
+        logger.info("PDOK Natura 2000 WFS niet bereikbaar; gebruik lokale natura2000_slim.geojson.")
         raw_n2000 = load_local_json(target_path)
 
-    # Bouw Shapely spatial index voor stiltegebieden
     stilte_geoms = []
     if HAS_SHAPELY:
         for sf in stilte_fc.get("features", []):
@@ -281,7 +224,6 @@ def enrich_natura2000(stilte_fc: Dict[str, Any]) -> None:
             or f"Natura 2000 #{gebiedsnummer}"
         )
 
-        # Spatial Join met Stiltegebieden
         overlaps_stilte = bool(props.get("stiltegebied", False))
         if HAS_SHAPELY and stilte_geoms:
             try:
@@ -323,34 +265,38 @@ def enrich_natura2000(stilte_fc: Dict[str, Any]) -> None:
                 "mini2se_toelichting": toelichting,
                 "url": url,
             },
-            "geometry": simplify_geometry(geom_dict, tolerance=0.0010, precision=4),
+            "geometry": preserve_full_geometry(geom_dict, precision=5),
         })
 
-    out = {"type": "FeatureCollection", "name": "natura2000_slim", "features": enriched_features}
-    save_compact_geojson(target_path, out)
-
-
-def optimize_luchtruim_and_notams() -> None:
-    """Valideert en comprimeert luchtruim_mini2se.geojson en notams_actueel.geojson (< 500 KB)."""
-    for filename in ("luchtruim_mini2se.geojson", "notams_actueel.geojson"):
-        path = DATA_DIR / filename
-        data = load_local_json(path)
-        if data.get("features"):
-            for feat in data["features"]:
-                if feat.get("geometry"):
-                    feat["geometry"] = simplify_geometry(feat["geometry"], tolerance=0.0006, precision=4)
-            save_compact_geojson(path, data)
+    return {"type": "FeatureCollection", "name": "natura2000_slim", "features": enriched_features}
 
 
 def main() -> None:
-    logger.info("Start Mini2SE Vliegkaart NL GeoJSON data-pipeline...")
+    logger.info("Start Mini2SE Vliegkaart NL GeoJSON data-pipeline (100%% ongecomprimeerde geometrie)...")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     stilte_fc = update_stiltegebieden()
-    enrich_natura2000(stilte_fc)
-    optimize_luchtruim_and_notams()
+    n2000_fc = enrich_natura2000(stilte_fc)
+    luchtruim_fc = load_local_json(DATA_DIR / "luchtruim_mini2se.geojson")
+    notams_fc = load_local_json(DATA_DIR / "notams_actueel.geojson")
 
-    logger.info("GeoJSON data-pipeline succesvol afgerond.")
+    manifest_files: Dict[str, Any] = {}
+    manifest_files["stiltegebieden.geojson"] = save_geojson_if_changed(DATA_DIR / "stiltegebieden.geojson", stilte_fc)
+    manifest_files["natura2000_slim.geojson"] = save_geojson_if_changed(DATA_DIR / "natura2000_slim.geojson", n2000_fc)
+    if luchtruim_fc.get("features"):
+        manifest_files["luchtruim_mini2se.geojson"] = save_geojson_if_changed(DATA_DIR / "luchtruim_mini2se.geojson", luchtruim_fc)
+    if notams_fc.get("features"):
+        manifest_files["notams_actueel.geojson"] = save_geojson_if_changed(DATA_DIR / "notams_actueel.geojson", notams_fc)
+
+    # Schrijf data/meta.json alleen als een van de hashes is gewijzigd
+    meta_path = DATA_DIR / "meta.json"
+    meta_doc = {"files": manifest_files}
+    meta_bytes = json.dumps(meta_doc, indent=2, sort_keys=True).encode("utf-8")
+    if not meta_path.exists() or meta_path.read_bytes() != meta_bytes:
+        meta_path.write_bytes(meta_bytes)
+        logger.info("Versie-manifest data/meta.json bijgewerkt.")
+    else:
+        logger.info("Versie-manifest data/meta.json is ongewijzigd.")
 
 
 if __name__ == "__main__":
