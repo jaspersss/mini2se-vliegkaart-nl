@@ -460,9 +460,6 @@
       <span class="drone-badge">
         <span>🛸</span> DJI Mini 2 SE &bull; &lt;250g (A1)
       </span>
-      <span id="locationModePill" class="mode-pill" title="Wissel tussen GPS en Kaart-kruisdraad">
-        📍 <span id="locationModeText">Punt-check (Soest)</span>
-      </span>
     </div>
 
     <div class="banner-main">
@@ -1474,15 +1471,9 @@
     }
 
     function updateLocationModeIndicator() {
-      const modeText = document.getElementById("locationModeText");
       const crosshairLabel = document.getElementById("crosshairLabel");
-      if (state.followGps) {
-        modeText.textContent = "Live GPS-locatie";
-        crosshairLabel.textContent = "Live GPS + 500m VLOS";
-      } else {
-        modeText.textContent = "Kruisdraad-check";
-        crosshairLabel.textContent = "Sleep kaart om punt te checken";
-      }
+      if (!crosshairLabel) return;
+      crosshairLabel.textContent = state.followGps ? "Live GPS + 500m VLOS" : "Sleep kaart om punt te checken";
     }
 
     /*************************************************************************
@@ -1546,10 +1537,6 @@
     /*************************************************************************
      * 8. EVENT LISTENERS (KNOPPEN, TIJD-SLIDER, BOTTOM SHEET)
      *************************************************************************/
-    document.getElementById("locationModePill").addEventListener("click", () => {
-      startLiveGpsTracking();
-    });
-
     document.getElementById("btnToggleBasemap").addEventListener("click", () => {
       state.usePdokBasemap = !state.usePdokBasemap;
       map.setLayoutProperty("pdok-layer", "visibility", state.usePdokBasemap ? "visible" : "none");
