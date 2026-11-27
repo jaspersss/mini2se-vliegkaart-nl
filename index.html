@@ -802,7 +802,7 @@
       }
       const lastMs = src.last_success ? Date.parse(src.last_success) : NaN;
       const ageH = Number.isFinite(lastMs) ? (Date.now() - lastMs) / 3600000 : Infinity;
-      if (src.status !== "ok" || ageH > MAX_NOTAM_AGE_HOURS) {
+      if (src.status === "error" || ageH > MAX_NOTAM_AGE_HOURS) {
         const ageTxt = Number.isFinite(ageH)
           ? (ageH < 1 ? `${Math.round(ageH * 60)} min` : `${Math.floor(ageH)} uur`)
           : "onbekende tijd";
@@ -846,27 +846,6 @@
       } catch (_) {
         return { ...base, status: "caution", title: "A3: 150m-controle mislukt", body: "De kaartgegevens konden niet worden gecontroleerd. Beoordeel de afstand tot bebouwing zelf." };
       }
-    }
-
-    function buildPilotChecklistHtml(drone) {
-      const items = [
-        "Exploitantnummer (RDW) op de drone — verplicht voor elke drone met camera, ook &lt;250 gram",
-        "WA-verzekering die drones dekt",
-        "Drone met het blote oog blijven zien (VLOS); de ~500m-cirkel is alleen een richtlijn",
-        "Niet boven mensenmenigten; respecteer privacy",
-        "Toestemming van de grondeigenaar/beheerder om op te stijgen en te landen"
-      ];
-      if (drone.label.includes("C1") || drone.openCat === "A2" || drone.openCat === "A3") {
-        items.splice(1, 0, "Online A1/A3-vliegbewijs (EU)");
-      }
-      if (drone.label.includes("C1") || drone.label.includes("C2")) {
-        items.splice(2, 0, "Direct Remote ID ingeschakeld met je exploitantnummer");
-      }
-      if (drone.openCat === "A2") {
-        items.splice(2, 0, "A2-certificaat + min. 30m van niet-betrokken personen (5m in low-speed modus)");
-      }
-      return `<ul style="margin:0;padding-left:18px;">${items.map((i) => `<li>${i}</li>`).join("")}</ul>` +
-        `<div style="margin-top:6px;font-size:11px;color:#94a3b8;">Deze app kan deze voorwaarden niet automatisch controleren en geeft geen juridische vluchtgoedkeuring.</div>`;
     }
 
     /**
@@ -1108,14 +1087,6 @@
           body: freshness
         });
       }
-
-      // 10. Persoonlijke voorwaarden die de app NIET kan controleren (piloot bevestigt zelf)
-      findings.push({
-        status: "info",
-        title: "Zelf controleren (piloot)",
-        tag: "CHECKLIST",
-        body: buildPilotChecklistHtml(state.selectedDrone)
-      });
 
       // Hoofdconclusie samenvatten voor de Top Status Banner (toon alle overlappende bijzonderheden!)
       // Bewust "geen beperkingen gevonden" i.p.v. "vrij om te vliegen": de app garandeert niets.
