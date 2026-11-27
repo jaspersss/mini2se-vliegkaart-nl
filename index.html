@@ -1894,9 +1894,9 @@
             </div>
           </div>
 
-          <input id="djiFileInput" type="file" accept=".txt" multiple style="display:none;" />
+          <input id="djiFileInput" type="file" accept=".txt,.kml,.gpx" multiple style="display:none;" />
           <button id="btnImportFlights" type="button" style="padding:10px;border-radius:10px;border:none;background:#059669;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
-            + Vluchten importeren (.txt)
+            + Vluchten importeren (.kml / .gpx / .txt)
           </button>
           <div id="importStatus" style="font-size:12px;color:#38bdf8;"></div>
 
@@ -1934,16 +1934,66 @@
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
         const statusEl = document.getElementById("importStatus");
+        const needsDjiKey = files.some((f) => f.name.toLowerCase().endsWith(".txt"));
         const djiKey = document.getElementById("inputDjiKey").value.trim();
-        if (!djiKey) {
-          statusEl.textContent = "Vul eerst je DJI Developer Key in en klik op Opslaan.";
+        if (needsDjiKey && !djiKey) {
+          statusEl.textContent = "Vul eerst je DJI Developer Key in voor .txt bestanden (of gebruik .kml / .gpx zonder key).";
           return;
         }
-        statusEl.textContent = `Parser laden en ${files.length} bestand(en) verwerken...`;
+        statusEl.textContent = `${files.length} bestand(en) verwerken...`;
         try {
-          const { DJILog } = await import("https://esm.sh/dji-log-parser-js@latest");
+          let DJILog = null;
+          if (needsDjiKey) {
+            ({ DJILog } = await import("https://esm.sh/dji-log-parser-js@latest"));
+          }
           let imported = 0;
           for (const file of files) {
+            const fname = file.name.toLowerCase();
+            if (fname.endsWith(".kml") || fname.endsWith(".gpx")) {
+              const text = await file.text();
+              const doc = new DOMParser().parseFromString(text, "text/xml");
+              const coords = [];
+              let maxAlt = 0;
+              if (fname.endsWith(".kml")) {
+                doc.querySelectorAll("coordinates").forEach((el) => {
+                  const parts = el.textContent.trim().split(/\s+/);
+                  for (const pt of parts) {
+                    const [lon, lat, alt] = pt.split(",").map(Number);
+                    if (!isNaN(lon) && !isNaN(lat) && (lon !== 0 || lat !== 0)) {
+                      coords.push([Number(lon.toFixed(5)), Number(lat.toFixed(5))]);
+                      if (!isNaN(alt) && alt > maxAlt) maxAlt = alt;
+                    }
+                  }
+                });
+              } else {
+                doc.querySelectorAll("trkpt").forEach((el) => {
+                  const lat = parseFloat(el.getAttribute("lat"));
+                  const lon = parseFloat(el.getAttribute("lon"));
+                  const eleEl = el.querySelector("ele");
+                  const alt = eleEl ? parseFloat(eleEl.textContent) : 0;
+                  if (!isNaN(lon) && !isNaN(lat)) {
+                    coords.push([Number(lon.toFixed(5)), Number(lat.toFixed(5))]);
+                    if (!isNaN(alt) && alt > maxAlt) maxAlt = alt;
+                  }
+                });
+              }
+              if (coords.length >= 2) {
+                const startTime = new Date(file.lastModified).toISOString();
+                const flightKey = `${startTime}_${file.name}`;
+                await sb.from("flights").upsert({
+                  user_id: currentUser.id,
+                  flight_key: flightKey,
+                  start_time: startTime,
+                  duration_sec: 0,
+                  max_altitude_m: maxAlt,
+                  max_distance_m: 0,
+                  home_point: coords[0],
+                  geojson: { type: "LineString", coordinates: coords }
+                }, { onConflict: "user_id,flight_key" });
+                imported++;
+              }
+              continue;
+            }
             const buf = new Uint8Array(await file.arrayBuffer());
             const parser = new DJILog(buf);
             let keychains = [];
