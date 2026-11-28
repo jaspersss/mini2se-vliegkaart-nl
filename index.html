@@ -564,8 +564,8 @@
   <aside id="legendBox" class="legend-box" aria-label="Kaartlegenda">
     <div class="legend-header">🎨 Legenda</div>
     <div class="legend-items">
-      <div class="legend-item"><span class="swatch swatch-red"></span> Verboden: CTR-zone 1/2, militaire CTR, beveiligd gebied, NOTAM-verbod, Natura 2000 mét droneverbod</div>
-      <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / voorwaarden: laagvlieggebied (max 30m), Natura 2000 (zorgplicht), nationaal park, NOTAM</div>
+      <div class="legend-item"><span class="swatch swatch-red"></span> Verboden: CTR-zone 1/2, militaire CTR, beveiligd gebied, NOTAM-verbod, laagvlieggebied (bij A3), Natura 2000 mét droneverbod</div>
+      <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / voorwaarden: laagvlieggebied/-route (max 30m in A1/A2), Natura 2000 (zorgplicht)</div>
       <div class="legend-item"><span class="swatch swatch-green"></span> Geen kleur: geen beperking gevonden (o.a. CTR-zone 3 buitenring, tot 120m)</div>
       <div class="legend-item"><span class="swatch swatch-incident"></span> Actieve hulpverlening (traumaheli, GRIP, natuurbrand, drone): 2–4,5 km
         <label class="legend-toggle"><input type="checkbox" id="toggleIncidents"> aan</label></div>
@@ -617,23 +617,12 @@
 
   <script>
     /*************************************************************************
-     * 1. INGEBOUWDE FALLBACK GEOJSON DATA (Regio Utrecht/Soest & Nederland)
-     * Zorgt dat de app direct 100% werkt, ook zonder dat GitHub Action al
-     * heeft gedraaid of wanneer offline geopend. Wordt bij opstarten
-     * aangevuld/overschreven door de verse bestanden in /data/*.geojson.
+     * 1. INGEBOUWDE FALLBACK GEOJSON DATA
      *************************************************************************/
     const FALLBACK_LUCHTRUIM = { type: "FeatureCollection", features: [] };
     const FALLBACK_NATURA2000 = { type: "FeatureCollection", features: [] };
-
-    const FALLBACK_STILTEGEBIEDEN = {
-      type: "FeatureCollection",
-      features: []
-    };
-
-    const FALLBACK_NOTAMS = {
-      type: "FeatureCollection",
-      features: []
-    };
+    const FALLBACK_STILTEGEBIEDEN = { type: "FeatureCollection", features: [] };
+    const FALLBACK_NOTAMS = { type: "FeatureCollection", features: [] };
 
     /*************************************************************************
      * 2. DRONE PROFIELEN & APPLICATIE STAAT (met localStorage opslag)
@@ -648,9 +637,9 @@
       { id: "avata2", name: "DJI Avata 2", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Bij FPV-bril is een waarnemer (spotter) verplicht." },
       { id: "mavic3c1", name: "DJI Mavic 3 Classic (C1)", label: "C1 (A1)", group: "C1 / 250g–900g (Open A1)", openCat: "A1", rules: "C1-label: A1/A3-vliegbewijs + Remote ID verplicht. Niet over niet-betrokken personen vliegen." },
       { id: "mavic3pro", name: "DJI Mavic 3 / 3 Pro (C2)", label: "C2 (A2)", group: "C2 / 900g–4kg (Open A2)", openCat: "A2", rules: "C2-label: A1/A3 + A2-certificaat + Remote ID verplicht. Min. 30m afstand van personen (5m in low-speed)." },
-      { id: "air2s", name: "DJI Air 2S", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van woon-, industrie- en recreatiegebieden. Verboden in actieve GLV-laagvlieggebieden." },
-      { id: "mavic2", name: "DJI Mavic 2 Pro / Zoom", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van woon-, industrie- en recreatiegebieden. Verboden in actieve GLV-laagvlieggebieden." },
-      { id: "fpv", name: "DJI FPV / Phantom 4", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van bebouwing/recreatie. Verboden in actieve GLV-laagvlieggebieden." }
+      { id: "air2s", name: "DJI Air 2S", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van woon-, industrie- en recreatiegebieden. Verboden in actieve laagvlieggebieden." },
+      { id: "mavic2", name: "DJI Mavic 2 Pro / Zoom", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van woon-, industrie- en recreatiegebieden. Verboden in actieve laagvlieggebieden." },
+      { id: "fpv", name: "DJI FPV / Phantom 4", label: ">250g (A3)", group: "Legacy >250g zonder Cx-label (Open A3)", openCat: "A3", rules: "Open Categorie A3: A1/A3-bewijs verplicht, min. 150m afstand van bebouwing/recreatie. Verboden in actieve laagvlieggebieden." }
     ];
 
     function getPref(key, fallback) {
@@ -689,7 +678,7 @@
       simTimestamp: new Date(),
       usePdokBasemap: savedBasemap === "true",
       showIncidents: savedShowIncidents === "true",
-      incidentData: null // { generated_at, last_feed_success, incidents: [] } uit branch incidents-data
+      incidentData: null
     };
 
     // Zet direct de opgeslagen drone-naam in de bovenbalk (voordat de kaart klaar is met laden)
@@ -701,10 +690,6 @@
     /*************************************************************************
      * 3. REGEL-ENGINE (EU OPEN CATEGORIE A1/A2/A3, PER DRONEPROFIEL)
      *************************************************************************/
-    /**
-     * Geeft weekdag/uur in Nederlandse tijd (Europe/Amsterdam), ongeacht de tijdzone van het toestel.
-     * Voorkomt dat GLV-/zweefvliegschema's verkeerd worden beoordeeld als je telefoon in een andere tijdzone staat.
-     */
     const AMS_FMT = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Europe/Amsterdam", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
     });
@@ -718,20 +703,31 @@
       return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
+    function personalizeDroneText(rawHtml) {
+      const activeDroneName = `${state.selectedDrone.name} (${state.selectedDrone.label})`;
+      return String(rawHtml || "")
+        .replace(/jouw <\s*250g DJI Mini 2 SE in A1/gi, `jouw ${activeDroneName}`)
+        .replace(/jouw DJI Mini 2 SE \(<\s*250g\)/gi, `jouw ${activeDroneName}`)
+        .replace(/DJI Mini 2 SE/gi, activeDroneName);
+    }
+
+    function isLowFlyForbiddenForCurrentDrone(props) {
+      if (props.type !== "GLV_LOW_FLY") return false;
+      return state.selectedDrone.openCat === "A3" || props.forbidden_for_a3 === true && state.selectedDrone.openCat === "A3";
+    }
+
     function isTimeBoundZoneActive(schedule, dateObj) {
-      const { day, hour } = getAmsterdamParts(dateObj); // 0 = zondag, 6 = zaterdag
+      const { day, hour } = getAmsterdamParts(dateObj);
 
       if (schedule === "H24") return true;
 
       if (schedule === "WEEKDAY_08_23") {
-        // GLV militair laagvlieggebied: ma-do 08:00-23:00, vr 08:00-16:30
         if (day === 0 || day === 6) return false;
         if (day === 5) return hour >= 8 && hour <= 16.5;
         return hour >= 8 && hour <= 23;
       }
 
       if (schedule === "WEEKEND_AND_WED_AFTERNOON") {
-        // Zweefvliegterrein Soesterberg: za/zo 09:00-20:00, wo 12:00-20:00
         if (day === 0 || day === 6) return hour >= 9 && hour <= 20;
         if (day === 3) return hour >= 12 && hour <= 20;
         return false;
@@ -752,10 +748,6 @@
       return true;
     }
 
-    /**
-     * Berekent het wettelijke Nederlandse daglichtvenster (Uniforme Daglichtperiode):
-     * 15 minuten vóór zonsopkomst tot 15 minuten ná zonsondergang op de exacte GPS-coördinaat.
-     */
     function calculateDaylightWindow(lngLat, dateObj) {
       const [lng, lat] = lngLat;
       const sunTimes = SunCalc.getTimes(dateObj, lat, lng);
@@ -777,7 +769,6 @@
         const m = diffMin % 60;
         countdownText = `🌙 Buiten daglichtvenster — Vliegen toegestaan over ${h}u ${m}m vanaf ${fmt(legalStart)}`;
       } else {
-        // Na einde daglichtperiode: bereken morgenochtend
         const tomorrow = new Date(dateObj.getTime() + 24 * 3600 * 1000);
         const sunTomorrow = SunCalc.getTimes(tomorrow, lat, lng);
         const nextStart = new Date(sunTomorrow.sunrise.getTime() - 15 * 60 * 1000);
@@ -794,10 +785,6 @@
       };
     }
 
-    /**
-     * Actualiteitscontrole: berekent bij ELKE evaluatie (elke 30s) opnieuw hoe oud de NOTAM-/luchtruimdata is,
-     * zodat een PWA die urenlang open staat niet stilletjes groen blijft op verouderde data.
-     */
     const MAX_NOTAM_AGE_HOURS = 6;
     function getDataFreshnessWarning() {
       const m = state.dataMeta;
@@ -820,10 +807,6 @@
       return null;
     }
 
-    /**
-     * Actieve hulpverleningsincidenten (P2000, via GitHub Action -> branch incidents-data).
-     * Bevat bewust géén straatnaam of ruwe P2000-tekst (voorkomt ramptoerisme).
-     */
     const INCIDENTS_URL = "https://raw.githubusercontent.com/jaspersss/mini2se-vliegkaart-nl/incidents-data/incidents.json";
     const INCIDENT_MAX_FEED_AGE_HOURS = 2;
     const INCIDENT_INFO = {
@@ -862,18 +845,12 @@
       try {
         const res = await fetch(`${INCIDENTS_URL}?t=${Math.floor(Date.now() / 60000)}`, { cache: "no-store" });
         if (res.ok) state.incidentData = await res.json();
-      } catch (_) {
-        // Offline of laag nog niet gepubliceerd: gewoon geen incidentlaag tonen
-      }
+      } catch (_) {}
       if (map.getSource && map.getSource("incidents-source")) {
         map.getSource("incidents-source").setData(buildIncidentCirclesGeoJSON(state.simTimestamp));
       }
     }
 
-    /**
-     * A3-regel: min. 150m horizontale afstand tot woon-, handels-, industrie- en recreatiegebieden.
-     * Gecontroleerd met OpenStreetMap-landgebruik en gebouwen uit de vector-tiles rond het gecontroleerde punt.
-     */
     const A3_LANDUSE_CLASSES = ["residential", "commercial", "industrial", "retail", "garages", "stadium", "playground", "theme_park", "zoo", "pitch"];
     function checkA3ResidentialDistance(lngLat) {
       const base = { tag: "A3 • 150M AFSTAND" };
@@ -908,7 +885,6 @@
 
     /**
      * Kernfunctie: evaluateLocationAndTime(lngLat, timestamp)
-     * Geeft eenduidig verdict ('forbidden' | 'caution' | 'free'), max hoogte en lijst met redenen terug.
      */
     function evaluateLocationAndTime(lngLat, timestamp) {
       const dateObj = timestamp instanceof Date ? timestamp : new Date(timestamp);
@@ -916,7 +892,7 @@
       const daylight = calculateDaylightWindow(lngLat, dateObj);
 
       const findings = [];
-      let overallStatus = "free"; // 'free' | 'caution' | 'forbidden'
+      let overallStatus = "free";
       let maxAltitudeM = 120;
 
       const escalateStatus = (newStatus, limitM) => {
@@ -929,25 +905,25 @@
         }
       };
 
-      // 1. Check Wettelijke Daglichtperiode (Open Categorie A1 nachtvliegverbod)
+      // 1. Check Wettelijke Daglichtperiode (Open Categorie nachtvliegverbod)
       if (!daylight.isDaylight) {
         escalateStatus("forbidden", 0);
         findings.push({
           status: "forbidden",
           title: "Buiten Wettelijk Daglichtvenster (UDP)",
           tag: "NACHTVLIEGVERBOD",
-          body: `In de EU Open Categorie (A1) is het in Nederland verboden om buiten de Uniforme Daglichtperiode te vliegen (15 min vóór zonsopkomst [${daylight.startFormatted}] tot 15 min ná zonsondergang [${daylight.endFormatted}]).`
+          body: `In de EU Open Categorie (${state.selectedDrone.openCat}) is het in Nederland verboden om buiten de Uniforme Daglichtperiode te vliegen (15 min vóór zonsopkomst [${daylight.startFormatted}] tot 15 min ná zonsondergang [${daylight.endFormatted}]).`
         });
       }
 
-      // 2. Check Tijdelijke Restricties (NOTAMs / TGB's)
+      // 2. Check Tijdelijke Restricties (NOTAMs / TGB's — uit veiligheidsoogpunt altijd no-go / 0m)
       for (const feat of state.datasets.notams.features || []) {
         if (!feat.geometry) continue;
         if (turf.booleanPointInPolygon(pt, feat)) {
           const p = feat.properties || {};
           const active = isNotamActive(p, dateObj);
-          const notamStatus = p.status || "forbidden";
-          const notamLim = typeof p.max_height_m === "number" ? p.max_height_m : (notamStatus === "forbidden" ? 0 : 120);
+          const notamStatus = "forbidden";
+          const notamLim = 0;
           if (active) {
             escalateStatus(notamStatus, notamLim);
             const rawText = escapeHtml(p.mini2se_toelichting || "Actieve tijdelijke luchtruimbeperking of navigatiewaarschuwing (NOTAM).");
@@ -977,14 +953,14 @@
             const structuredNotamBody =
               `<strong>Wat:</strong> ${shortSummary}<br>` +
               `<strong>Actief:</strong> ${fromStr} t/m ${toStr}<br>` +
-              `<strong>Status:</strong> ${notamStatus === "forbidden" ? "Verboden te vliegen (0m)" : "Waarschuwing (vliegen toegestaan, let op)"}` +
+              `<strong>Status:</strong> Uit veiligheidsoogpunt gemarkeerd als no-go (0m)` +
               `<details style="margin-top:6px;"><summary style="cursor:pointer;color:#38bdf8;font-size:11.5px;font-weight:600;">📜 Toon volledige NOTAM</summary>` +
               `<div style="margin-top:4px;font-family:ui-monospace,monospace;font-size:10.5px;color:#94a3b8;word-break:break-word;">${rawText}</div></details>`;
 
             findings.push({
               status: notamStatus,
               title: escapeHtml(`${p.naam || "Tijdelijke Melding"} (${p.notam_code || "NOTAM"})`),
-              tag: notamStatus === "forbidden" ? "NOTAM VERBOD • 0M" : "NOTAM LET OP",
+              tag: "NOTAM VERBOD • 0M",
               body: structuredNotamBody
             });
           } else {
@@ -998,7 +974,7 @@
         }
       }
 
-      // 3. Check Luchtruim (CTR's, Militaire zones, GLV laagvlieggebieden, Zweefvliegsectoren, Waarschuwingscirkels)
+      // 3. Check Luchtruim (CTR's, Militaire zones, GLV laagvlieggebieden & -corridors, Waarschuwingscirkels)
       const vlosPoly = turf.circle(lngLat, 0.5, { steps: 16, units: "kilometers" });
       const warningHitsInVlos = [];
       for (const feat of state.datasets.luchtruim.features || []) {
@@ -1025,7 +1001,7 @@
           if (p.type === "GLV_LOW_FLY" || p.type === "TIME_BOUND_AIRSPACE") {
             const isActive = isTimeBoundZoneActive(p.schedule, dateObj);
             if (isActive) {
-              const isA3Glv = p.type === "GLV_LOW_FLY" && state.selectedDrone.openCat === "A3";
+              const isA3Glv = isLowFlyForbiddenForCurrentDrone(p);
               const st = isA3Glv ? "forbidden" : (p.status_active || "caution");
               const lim = isA3Glv ? 0 : (typeof p.max_height_active_m === "number" ? p.max_height_active_m : 30);
               escalateStatus(st, lim);
@@ -1034,8 +1010,8 @@
                 title: `${p.naam} (Nu Actief)`,
                 tag: isA3Glv ? "A3 VERBODEN • 0M" : `ACTIEF • MAX ${lim}M`,
                 body: isA3Glv
-                  ? `Laagvlieggebied (${p.naam}): voor jouw ${state.selectedDrone.name} in Open Categorie A3 is vliegen in een actief laagvlieggebied VERBODEN (0m).`
-                  : p.mini2se_toelichting
+                  ? `Laagvliegroute / -gebied (${p.naam}): voor jouw ${state.selectedDrone.name} in Open Categorie A3 is vliegen in een actief laagvlieggebied VERBODEN (0m).`
+                  : (p.mini2se_toelichting || `Laagvliegroute / -gebied (${p.naam}): toegestaan tot maximaal ${lim}m AGL in Open Categorie A1 en A2.`)
               });
             } else {
               findings.push({
@@ -1094,7 +1070,7 @@
         }
       }
 
-      // 5b. Actieve hulpverlening (traumaheli, GRIP, natuurbrand, drone hulpdiensten)
+      // 5b. Actieve hulpverlening
       for (const inc of getActiveIncidents(dateObj)) {
         const distKm = turf.distance(pt, turf.point([inc.lon, inc.lat]), { units: "kilometers" });
         if (distKm * 1000 > inc.radius_m) continue;
@@ -1117,17 +1093,17 @@
           isDefaultFree: true,
           title: `Geen luchtruimbeperking gevonden (Klasse G) — Open Categorie ${state.selectedDrone.openCat}`,
           tag: "VRIJ TOT 120M AGL",
-          body: `In de beschikbare data is op dit punt geen CTR, actief laagvlieggebied, NOTAM, Natura 2000 of Nationaal Park gevonden. Dit is geen garantie: controleer bij twijfel altijd GoDrone. Regels voor jouw ${state.selectedDrone.name} (${state.selectedDrone.label}): ${state.selectedDrone.rules}`
+          body: `In de beschikbare data is op dit punt geen CTR, actief laagvlieggebied, NOTAM of Natura 2000 gevonden. Dit is geen garantie: controleer bij twijfel altijd GoDrone. Regels voor jouw ${state.selectedDrone.name} (${state.selectedDrone.label}): ${state.selectedDrone.rules}`
         });
       }
 
-      // 7. Check of er Spoor, Snelweg of Hoogspanning in de 500m VLOS-cirkel ligt (puur informatief, geen kleurwijziging)
+      // 7. Check of er Spoor, Snelweg of Hoogspanning in de 500m VLOS-cirkel ligt
       const infraHits = [];
       if (typeof map !== "undefined" && map.getZoom && map.getZoom() >= 10.5) {
         try {
           const [cLng, cLat] = lngLat;
-          const dLat = 0.0045; // ~500m
-          const dLng = 0.0073; // ~500m op NL-breedtegraad
+          const dLat = 0.0045;
+          const dLng = 0.0073;
           const sw = map.project([cLng - dLng, cLat - dLat]);
           const ne = map.project([cLng + dLng, cLat + dLat]);
           const bbox = [[Math.min(sw.x, ne.x), Math.min(sw.y, ne.y)], [Math.max(sw.x, ne.x), Math.max(sw.y, ne.y)]];
@@ -1143,14 +1119,13 @@
       }
 
       // 8. Operationele dronecontrole: A3 = min. 150m van woon-, handels-, industrie- en recreatiegebieden
-      //    (geografisch gecontroleerd met OpenStreetMap-landgebruik + gebouwen in de vector-tiles).
       if (state.selectedDrone.openCat === "A3") {
         const a3Result = checkA3ResidentialDistance(lngLat);
         if (a3Result.status !== "free") escalateStatus(a3Result.status, a3Result.status === "forbidden" ? 0 : undefined);
         findings.push(a3Result);
       }
 
-      // 9. Actualiteit van de onderliggende data (NOTAM's / luchtruim)
+      // 9. Actualiteit van de onderliggende data
       const incFresh = getIncidentFreshnessWarning();
       if (incFresh) {
         escalateStatus("caution");
@@ -1167,8 +1142,6 @@
         });
       }
 
-      // Hoofdconclusie samenvatten voor de Top Status Banner (toon alle overlappende bijzonderheden!)
-      // Bewust "geen beperkingen gevonden" i.p.v. "vrij om te vliegen": de app garandeert niets.
       let headline = "🟢 GEEN BEPERKINGEN GEVONDEN";
       if (overallStatus === "forbidden") {
         headline = "🔴 NO-FLY (VERBODEN)";
@@ -1245,7 +1218,6 @@
       attributionControl: false
     });
 
-    // Blauwe GPS-stip Marker
     const gpsEl = document.createElement("div");
     gpsEl.className = "gps-marker-wrap";
     gpsEl.innerHTML = `<div class="gps-pulse"></div><div id="gpsHeadingCone" class="gps-heading"></div><div class="gps-dot"></div>`;
@@ -1255,7 +1227,7 @@
     /**
      * Maakt een gecombineerde GeoJSON voor kaartweergave waarin elke feature een
      * actuele 'render_status' ('forbidden' | 'caution' | 'free') krijgt op basis
-     * van de geselecteerde tijd in de tijd-simulator.
+     * van de geselecteerde drone en tijd.
      */
     function buildRenderableZonesGeoJSON(dateObj) {
       const features = [];
@@ -1281,13 +1253,13 @@
         });
       }
 
-      // Luchtruim
+      // Luchtruim (incl. laagvlieggebieden & corridors: oranje bij A1/A2, rood bij A3)
       for (const f of state.datasets.luchtruim.features || []) {
         const p = f.properties || {};
         let renderStatus = p.status || "forbidden";
         if (p.type === "GLV_LOW_FLY" || p.type === "TIME_BOUND_AIRSPACE") {
           if (isTimeBoundZoneActive(p.schedule, dateObj)) {
-            renderStatus = (p.type === "GLV_LOW_FLY" && state.selectedDrone.openCat === "A3")
+            renderStatus = isLowFlyForbiddenForCurrentDrone(p)
               ? "forbidden"
               : (p.status_active || "caution");
           } else {
@@ -1301,10 +1273,10 @@
         });
       }
 
-      // NOTAMs (kaartkleur komt 1-op-1 overeen met status in popup & bovenbalk)
+      // NOTAMs (actief = altijd rood / forbidden)
       for (const f of state.datasets.notams.features || []) {
         const p = f.properties || {};
-        const renderStatus = isNotamActive(p, dateObj) ? (p.status || "forbidden") : "free";
+        const renderStatus = isNotamActive(p, dateObj) ? "forbidden" : "free";
         features.push({
           type: "Feature",
           geometry: f.geometry,
@@ -1320,7 +1292,6 @@
     }
 
     map.on("load", async () => {
-      // Voeg GeoJSON bronnen toe
       map.addSource("zones-source", {
         type: "geojson",
         data: buildRenderableZonesGeoJSON(state.simTimestamp)
@@ -1336,13 +1307,11 @@
         data: buildVlosCircleGeoJSON(state.inspectedLngLat)
       });
 
-      // OpenFreeMap vector tiles voor subtiele infra-lijnen (spoor & snelweg) vanaf zoom 12.5
       map.addSource("osm-vector", {
         type: "vector",
         url: "https://tiles.openfreemap.org/planet"
       });
 
-      // Snelwegen (rood-wit gestreept, zichtbaar vanaf zoom 10.5)
       map.addLayer({
         id: "infra-motorway-base",
         type: "line",
@@ -1362,7 +1331,6 @@
         paint: { "line-color": "#ffffff", "line-width": 1.5, "line-dasharray": [3, 3], "line-opacity": 0.9 }
       });
 
-      // Spoorlijnen / trein (zwart-wit geblokt, zichtbaar vanaf zoom 10.5)
       map.addLayer({
         id: "infra-rail-base",
         type: "line",
@@ -1382,7 +1350,6 @@
         paint: { "line-color": "#ffffff", "line-width": 1.8, "line-dasharray": [2, 2], "line-opacity": 0.95 }
       });
 
-      // Onzichtbare landgebruik-laag (woon/handel/industrie/recreatie) voor A3 150m afstandscheck
       map.addLayer({
         id: "infra-landuse-a3",
         type: "fill",
@@ -1393,7 +1360,6 @@
         paint: { "fill-opacity": 0 }
       });
 
-      // Onzichtbare gebouwen-laag voor A3 150m afstandscheck
       map.addLayer({
         id: "infra-buildings",
         type: "fill",
@@ -1403,7 +1369,6 @@
         paint: { "fill-opacity": 0 }
       });
 
-      // Hoogspanningslijnen uit OpenStreetMap (paarse stippellijn vanaf zoom 10.5)
       map.addSource("hoogspanning-source", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] }
@@ -1421,7 +1386,6 @@
         }
       });
 
-      // Persoonlijke vluchthistorie (routes & Home Points uit Supabase)
       map.addSource("flights-routes-source", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] }
@@ -1452,7 +1416,6 @@
         }
       });
 
-      // Vlakvulling voor zones (alleen tekenen als er een echte restrictie/beperking geldt)
       map.addLayer({
         id: "zones-fill",
         type: "fill",
@@ -1476,7 +1439,6 @@
         }
       });
 
-      // Randlijnen voor zones
       map.addLayer({
         id: "zones-line",
         type: "line",
@@ -1494,7 +1456,6 @@
         }
       });
 
-      // Subtiele gestippelde waarschuwingsgebieden (zweefvliegen, modelvliegen, paragliding)
       map.addLayer({
         id: "zones-warning-fill",
         type: "fill",
@@ -1518,7 +1479,6 @@
         }
       });
 
-      // Actieve hulpverleningsincidenten (semi-transparante oranje cirkel, zonder tekst/adres)
       map.addLayer({
         id: "incidents-fill",
         type: "fill",
@@ -1534,7 +1494,6 @@
         paint: { "line-color": "#c2410c", "line-width": 2.5 }
       });
 
-      // 500m VLOS Cirkel Vulling + Gestippelde Rand
       map.addLayer({
         id: "vlos-fill",
         type: "fill",
@@ -1556,26 +1515,21 @@
         }
       });
 
-      // Pas opgeslagen achtergrondkaart toe
       map.setLayoutProperty("pdok-layer", "visibility", state.usePdokBasemap ? "visible" : "none");
       map.setLayoutProperty("osm-layer", "visibility", state.usePdokBasemap ? "none" : "visible");
 
-      // Laad externe GeoJSON-bestanden uit /data/ (indien aanwezig)
       await loadExternalGeoJSONData();
       await loadIncidents();
       refreshEvaluationAndUI();
 
-      // Start automatisch live GPS-tracking (koppelt alleen bij de eerste fix)
       startLiveGpsTracking();
     });
 
-    // Verberg het sleep-label permanent zodra de gebruiker de kaart een keer heeft versleept
     map.on("dragstart", () => {
       const lbl = document.getElementById("crosshairLabel");
       if (lbl) lbl.style.display = "none";
     });
 
-    // Wanneer de gebruiker de kaart sleept of ergens tikt -> evalueer direct het middenpunt
     map.on("move", () => {
       const c = map.getCenter();
       state.inspectedLngLat = [c.lng, c.lat];
@@ -1596,13 +1550,9 @@
         modalTitleEl.textContent = `Analyse op dit punt (${findings.length} ${findings.length === 1 ? "laag" : "lagen"})`;
       }
       const sheetContent = document.getElementById("sheetContent");
-      const activeDroneName = `${state.selectedDrone.name} (${state.selectedDrone.label})`;
       sheetContent.innerHTML = findings
         .map((item) => {
-          const bodyText = (item.body || "")
-            .replace(/jouw <\s*250g DJI Mini 2 SE in A1/gi, `jouw ${activeDroneName}`)
-            .replace(/jouw DJI Mini 2 SE \(<\s*250g\)/gi, `jouw ${activeDroneName}`)
-            .replace(/DJI Mini 2 SE/gi, activeDroneName);
+          const bodyText = personalizeDroneText(item.body);
           const linkHtml = item.url
             ? `<a class="detail-link" href="${item.url}" target="_blank" rel="noopener">🔗 Bekijk officieel Natura 2000-gebiedsprofiel &rarr;</a>`
             : "";
@@ -1622,11 +1572,10 @@
 
     map.on("click", (e) => {
       const clickedLngLat = [e.lngLat.lng, e.lngLat.lat];
-      const clickResult = evaluateLocationAndTime(clickedLngLat, new Date());
+      const clickResult = evaluateLocationAndTime(clickedLngLat, state.simTimestamp);
       const hasZoneAtClick =
         clickResult.status !== "free" ||
-        (clickResult.findings.length > 0 &&
-          clickResult.findings[0].title !== "Vrij Luchtruim (Klasse G) — Open Categorie A1");
+        clickResult.findings.some((f) => !f.isDefaultFree);
 
       if (hasZoneAtClick) {
         renderDetailsModal(clickResult.findings);
@@ -1636,10 +1585,6 @@
 
     /*************************************************************************
      * 5. SLIMME HASH-GEBASEERDE DATA CACHE (IndexedDB + data/meta.json)
-     * Controleert eerst het piepkleine data/meta.json (~250 bytes).
-     * Downloadt een GeoJSON-bestand ALLEEN opnieuw als de SHA-256 hash op
-     * GitHub is veranderd; anders wordt het direct in <50ms uit IndexedDB
-     * geladen (0 KB netwerkverkeer, 100% ongecomprimeerde PDOK-geometrie!).
      *************************************************************************/
     const IDB_NAME = "mini2se_geodata_cache_v1";
     const IDB_STORE = "geojson_files";
@@ -1682,21 +1627,17 @@
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
         });
-      } catch (_) {
-        // Negeer als privémodus IndexedDB blokkeert
-      }
+      } catch (_) {}
     }
 
     async function fetchGeoJSONIfChanged(filename, remoteMeta, fallbackData) {
       const expectedHash = remoteMeta && remoteMeta[filename] ? remoteMeta[filename].hash : null;
       const cached = await idbGet(filename);
 
-      // 1. Als de lokale IndexedDB hash overeenkomt met data/meta.json -> direct gebruiken zonder download!
       if (cached && cached.data && expectedHash && cached.hash === expectedHash) {
         return { data: cached.data, fromCache: true };
       }
 
-      // 2. Anders: download nieuwe versie (met cache-busting hash in query string)
       try {
         const url = expectedHash ? `./data/${filename}?v=${expectedHash}` : `./data/${filename}`;
         const res = await fetch(url);
@@ -1708,7 +1649,6 @@
           }
         }
       } catch (_) {
-        // Offline? Gebruik laatst gecachte versie uit IndexedDB als die bestaat
         if (cached && cached.data) {
           return { data: cached.data, fromCache: true };
         }
@@ -1729,8 +1669,6 @@
           try { localStorage.setItem("mini2se_last_meta_sources", JSON.stringify(metaJson.sources || null)); } catch (_) {}
         }
       } catch (_) {
-        // Offline: we vallen terug op IndexedDB. Gebruik de laatst bekende bron-tijden zodat de
-        // leeftijd van de (gecachte) NOTAM-data offline gewoon blijft oplopen en tot een waarschuwing leidt.
         try {
           const cachedSources = JSON.parse(localStorage.getItem("mini2se_last_meta_sources") || "null");
           if (cachedSources) state.dataMeta = { reachable: true, offline: true, sources: cachedSources };
@@ -1784,7 +1722,6 @@
       state.simTimestamp = new Date();
       const result = evaluateLocationAndTime(state.inspectedLngLat, state.simTimestamp);
 
-      // 1. Top Banner kleuren, drone-badge en teksten
       const badgeTextEl = document.getElementById("droneBadgeText");
       if (badgeTextEl) {
         badgeTextEl.textContent = `${state.selectedDrone.name} • ${state.selectedDrone.label}`;
@@ -1798,35 +1735,11 @@
       document.getElementById("altitudeValue").textContent =
         result.maxAltitudeM === 0 ? "0M (STOP)" : `MAX ${result.maxAltitudeM}M`;
 
-      // 2. VLOS 500m cirkel bijwerken rond geëvalueerd punt
       if (map.getSource("vlos-source")) {
         map.getSource("vlos-source").setData(buildVlosCircleGeoJSON(state.inspectedLngLat));
       }
 
-      // 3. Details Popup Modal vullen
-      const modalTitleEl = document.getElementById("detailsModalTitle");
-      if (modalTitleEl) {
-        modalTitleEl.textContent = `Analyse op dit punt (${result.findings.length} ${result.findings.length === 1 ? "laag" : "lagen"})`;
-      }
-
-      const sheetContent = document.getElementById("sheetContent");
-      sheetContent.innerHTML = result.findings
-        .map((item) => {
-          const linkHtml = item.url
-            ? `<a class="detail-link" href="${item.url}" target="_blank" rel="noopener">🔗 Bekijk officieel Natura 2000-gebiedsprofiel &rarr;</a>`
-            : "";
-          return `
-            <article class="detail-card card-${item.status}">
-              <div class="detail-card-header">
-                <div class="detail-card-title">${item.title}</div>
-                <span class="detail-tag">${item.tag}</span>
-              </div>
-              <div class="detail-card-body">${item.body}</div>
-              ${linkHtml}
-            </article>
-          `;
-        })
-        .join("");
+      renderDetailsModal(result.findings);
     }
 
     function updateMapZoneColorsForTime() {
@@ -1845,7 +1758,7 @@
     }
 
     /*************************************************************************
-     * 7. LIVE GPS & KOMPAS (automatisch aan bij opstarten, koppelt 1x)
+     * 7. LIVE GPS & KOMPAS
      *************************************************************************/
     let hasCenteredOnFirstGps = false;
 
@@ -1867,7 +1780,6 @@
               }
             }
 
-            // Koppel kaart alleen bij de allereerste GPS-fix na opstarten
             if (!hasCenteredOnFirstGps) {
               hasCenteredOnFirstGps = true;
               state.followGps = true;
@@ -1891,7 +1803,6 @@
       }
     }
 
-    // DeviceOrientation kompas ondersteuning
     window.addEventListener("deviceorientationabsolute", (e) => {
       if (typeof e.alpha === "number") {
         const cone = document.getElementById("gpsHeadingCone");
@@ -1903,13 +1814,12 @@
     });
 
     /*************************************************************************
-     * 8. EVENT LISTENERS (KNOPPEN, TIJD-SLIDER, BOTTOM SHEET)
+     * 8. EVENT LISTENERS
      *************************************************************************/
     document.getElementById("legendBox").addEventListener("click", () => {
       document.getElementById("legendBox").classList.toggle("expanded");
     });
 
-    // Kaartlaag hulpverlening aan/uit (geldt voor kaart én analyse, zodat beide hetzelfde tonen)
     const incidentsToggle = document.getElementById("toggleIncidents");
     incidentsToggle.checked = state.showIncidents;
     incidentsToggle.parentElement.addEventListener("click", (e) => e.stopPropagation());
@@ -1930,7 +1840,6 @@
       map.setLayoutProperty("osm-layer", "visibility", state.usePdokBasemap ? "none" : "visible");
     });
 
-    // Drone-kiezer modal
     const droneBackdrop = document.getElementById("droneModalBackdrop");
     function renderDronePicker() {
       const groups = [];
@@ -1979,7 +1888,6 @@
       if (e.target === droneBackdrop) droneBackdrop.classList.remove("open");
     });
 
-    // Top Banner klik -> open Details Popup Modal
     const detailsBackdrop = document.getElementById("detailsModalBackdrop");
     document.getElementById("topBanner").addEventListener("click", (e) => {
       if (e.target.closest("#droneBadge")) return;
@@ -2341,14 +2249,11 @@
       }
     });
 
-    // Ververs elke 30 seconden de daglicht-aftelklok en actuele luchtruimstatus
     setInterval(() => {
       refreshEvaluationAndUI();
       updateMapZoneColorsForTime();
     }, 30000);
 
-    // Haal elke 15 minuten (en bij terugkeren naar de app) nieuwe data op. Dankzij de hash-check in
-    // meta.json wordt alleen gedownload wat echt gewijzigd is (meestal alleen het piepkleine meta.json).
     async function reloadDataAndRefresh() {
       try {
         await loadExternalGeoJSONData();
@@ -2357,7 +2262,6 @@
     }
     setInterval(reloadDataAndRefresh, 15 * 60 * 1000);
 
-    // Incidenten wijzigen snel: elke minuut opnieuw ophalen (alleen een klein JSON-bestand)
     setInterval(async () => { await loadIncidents(); refreshEvaluationAndUI(); }, 60 * 1000);
     let lastVisibleReload = Date.now();
     document.addEventListener("visibilitychange", () => {
@@ -2369,3 +2273,4 @@
   </script>
 </body>
 </html>
+```[cite: 5]
