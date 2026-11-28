@@ -3,29 +3,27 @@
 update_geodata.py — Officiële GoDrone / LVNL ED-318 UAS Geozones & PDOK Natura 2000 Pipeline
 ============================================================================================
 Dit script haalt de exacte, actuele Nederlandse drone-zonering op (inclusief de nieuwe
-gelaagde CTR-zones rond civiele luchthavens en live NOTAMs/TGB's):
+gelaagde CTR-zones rond civiele luchthavens, laagvliegcorridors en live NOTAMs/TGB's):
 
 1. `data/luchtruim_mini2se.geojson`:
    Haalt via de officiële GoDrone / LVNL MapData API (`api.godrone.nl/v2/mapdata/geojson`)
-   alle Nederlandse **ED-318 UAS Geozones** (`nl:uas:zones:ed318:*`) én waarschuwingszones
-   voor verhoogde luchtactiviteit (zweefvliegen, valschermspringen, helihavens) op:
+   alle Nederlandse **ED-318 UAS Geozones** (`nl:uas:zones:ed318:*`), laagvliegcorridors
+   en waarschuwingszones voor verhoogde luchtactiviteit op:
    - **Nieuwe gelaagde Civiele CTR-zones** (Schiphol, Rotterdam, Groningen, Lelystad, Maastricht):
      * **CTR ZONE 1 (Kernzone, 0-120m AGL):** 🔴 `forbidden` voor Open Categorie (0m).
      * **CTR ZONE 2A (Tussenring onderlaag, 0-45m AGL) & 2B (45-120m AGL):** 🔴 `forbidden` voor Open Categorie (alleen Specific tot 45m).
-     * **CTR ZONE 3 (Buitenste ring, 0-120m AGL):** 🟠/🟢 **TOEGESTAAN in de OPEN categorie (tot 120m AGL!)** — weergegeven als een voorwaardelijke/aandachtszone (`caution`, max 120m) zodat je direct ziet waar je in de buitenring van een civiele CTR met jouw DJI Mini 2 SE wél mag vliegen!
-     * *(CTR ZONE 4 ligt boven 120m AGL en wordt genegeerd voor <120m A1 drones, net als de oude enkelvoudige LVNL `type:ctr` laag die anders Zone 3 onterecht rood zou kleuren).*
+     * **CTR ZONE 3 (Buitenste ring, 0-120m AGL):** 🟢 **TOEGESTAAN in de OPEN categorie (tot 120m AGL)**.
    - **Militaire CTR's** (Eindhoven, Gilze-Rijen, Volkel, Woensdrecht, Leeuwarden, De Kooy, Deelen, De Peel): 🔴 `forbidden` (0m).
-   - **Militaire Laagvlieggebieden (ED-318 groep `2.*`, GLV I t/m XI & helikopterroutes):** 🟠 `caution` — **OPEN A1/A2 toegestaan tot max. 30m hoogte boven de grond** wanneer actief (en in het weekend vrij tot 120m).
+   - **Laagvlieggebieden & -corridors (ED-318 groep `2.*` & VFR-laagvliegroutes):** 🟠 `caution` — **OPEN A1/A2 toegestaan tot max. 30m hoogte boven de grond; A3 verboden.**
    - **Beveiligde gebieden, gevangenissen, paleizen, vitale infrastructuur, zware industrie & havens (ED-318 groepen `3.*`, `4.*`, `5.*`, `6.*`, `7.*`):** 🔴 `forbidden` (0m voor Open Categorie).
-   - **Gebieden met verhoogd luchtverkeersrisico (`risk:increasedAerialActivity:*`):** 🟠 `caution` (max 120m, extra waakzaamheid voor zweefvliegers, parachutisten of traumahelikopters).
+   - **Gebieden met verhoogd luchtverkeersrisico (`risk:increasedAerialActivity:*`):** ℹ️ `info` (max 120m, extra waakzaamheid voor zweefvliegers, parachutisten of modelvliegers).
 
 2. `data/notams_actueel.geojson`:
-   Haalt alle actuele **live NOTAMs & TFR's (Tijdelijke Gebieden met Beperkingen)** onder 120m AGL
-   rechtstreeks uit de GoDrone/LVNL feed (met hun echte `operationalFrom` en `operationalTo` tijden en exacte cirkel/polygoon).
+   Haalt alle actuele **live Nederlandse NOTAMs & TFR's (Tijdelijke Gebieden met Beperkingen)**
+   onder 120m AGL rechtstreeks uit de GoDrone/LVNL feed en markeert ze veilig als no-go (`forbidden`, 0m).
 
 3. `data/natura2000_slim.geojson` & `data/stiltegebieden.geojson`:
    - Alle 209 Natura 2000-gebieden op 100% originele PDOK-geometrie, gekoppeld aan `data/n2000_overrides.json`.
-   - **Belangrijke correctie Stiltegebieden:** Provinciale Stiltegebieden zijn *géén* luchtvaartwet-no-fly-zones (en staan daarom ook niet op GoDrone). Het luchtruim valt onder het Rijk; in veel stiltegebieden (zoals Eemland) is een `< 250g` DJI Mini 2 SE in A1 niet verboden (of pas een aandachtspunt voor geluid/rust op de grond). Ze worden daarom niet meer als rode verbodsblokken getoond.
 """
 
 from __future__ import annotations
@@ -39,6 +37,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import urllib.error
+import urllib.parse
 import urllib.request
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -150,8 +149,8 @@ def save_geojson_if_changed(path: Path, data: Dict[str, Any]) -> Dict[str, Any]:
 def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any], bool]:
     """
     Haalt alle officiële Nederlandse ED-318 UAS Geozones (inclusief de nieuwe gelaagde
-    civiele CTR-zones 1, 2A, 2B en 3), risicogebieden en live NOTAMs rechtstreeks op uit
-    de GoDrone / LVNL MapData API.
+    civiele CTR-zones 1, 2A en 3), laagvliegcorridors, risicogebieden en live Nederlandse NOTAMs
+    rechtstreeks op uit de GoDrone / LVNL MapData API.
     Retourneert (luchtruim_fc, notams_fc, all_tiles_ok).
     """
     if not GODRONE_API_KEY:
@@ -209,15 +208,21 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                     continue
                 ed318_features[aid] = feat
 
-            # 2. Live NOTAMs & TFR's (Tijdelijke Gebieden met Beperkingen)
+            # 2. Live NOTAMs & TFR's (uitsluitend Nederlands luchtruim EHAA / nl:)
             elif "notam" in aid.lower() or dcat in ("class:tfr", "class:nav_warning"):
-                # Filter algemene landelijke of irrelevante obstakel-NOTAMs (> 5 km2 of pure mast-lampjes)
+                if not (aid.lower().startswith("nl:") or "ehaa" in aid.lower() or "ehaa" in name.lower()):
+                    continue
+                # Filter pure obstakel-NOTAMs (mastverlichting, kranen, windmolens)
                 if "OBSTACLE" in name.upper() or "WINDMILL" in name.upper() or "CRANE" in name.upper():
                     continue
                 notam_id = str(p.get("notamId") or aid)
                 notam_features[notam_id] = feat
 
-            # 3. Waarschuwingsgebieden (Zweefvliegen, Modelvliegen/UAV, Parachute, Paragliding):
+            # 3. Civiele / overige Laagvliegroutes & -gebieden (o.a. VFR-corridors bij Schiphol/Loenersloot)
+            elif "low_fly" in dcat.lower() or "laagvlieg" in name.lower():
+                ed318_features[f"LFR_{aid}"] = feat
+
+            # 4. Waarschuwingsgebieden (Zweefvliegen, Modelvliegen/UAV, Paragliding):
             # Puur subtiel als stippelcirkel + VLOS-melding, zonder de bovenbalk oranje te maken.
             elif dcat.startswith("risk:increasedAerialActivity:"):
                 key = f"{dcat}:{name}"
@@ -225,7 +230,7 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
 
     luchtruim_out: List[Dict[str, Any]] = []
 
-    # Verwerk ED-318 UAS Geozones
+    # Verwerk ED-318 UAS Geozones & Laagvliegcorridors
     for aid, feat in sorted(ed318_features.items()):
         p = feat.get("properties") or {}
         name = str(p.get("name") or aid).strip()
@@ -249,7 +254,6 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
 
         # A. Nieuwe Gelaagde Civiele CTR-zones (CTR ZONE 1, 2A, 3)
         if "CTR ZONE 3" in upper_name:
-            # CTR ZONE 3 (Buitenring civiele CTR): OPEN CATEGORIE VRIJ TOT 120M (geen restrictie -> groen, niet tekenen)
             luchtruim_out.append({
                 "type": "Feature",
                 "properties": {
@@ -262,7 +266,7 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                     "schedule": "H24",
                     "mini2se_toelichting": (
                         f"Nieuwe gelaagde CTR-zonering ({name}, 0 tot 120m AGL): "
-                        "Vluchten in de OPEN categorie (zoals jouw < 250g DJI Mini 2 SE in A1) zijn hier zonder restricties TOEGESTAAN tot 120m hoogte."
+                        "Vluchten in de OPEN categorie (A1, A2 en A3) zijn hier zonder luchtvaart-restricties TOEGESTAAN tot 120m hoogte."
                     ),
                 },
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
@@ -280,7 +284,7 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                     "max_height_m": 0,
                     "schedule": "H24",
                     "mini2se_toelichting": (
-                        f"Nieuwe gelaagde CTR-zonering ({name}): Categorie OPEN is hier VERBODEN (0m). "
+                        f"Nieuwe gelaagde CTR-zonering ({name}): Categorie OPEN (A1/A2/A3) is hier VERBODEN (0m). "
                         "Alleen piloten met een vergunning in de Specifieke categorie mogen in Zone 2A tot maximaal 45 meter hoogte vliegen."
                     ),
                 },
@@ -299,34 +303,32 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                     "max_height_m": 0,
                     "schedule": "H24",
                     "mini2se_toelichting": (
-                        f"Binnenste kernzone van de luchthaven ({name}, 0-120m): Categorie OPEN is hier strikt VERBODEN (0m). "
+                        f"Binnenste kernzone van de luchthaven ({name}, 0-120m): Categorie OPEN (A1/A2/A3) is hier strikt VERBODEN (0m). "
                         "Alleen toegankelijk voor Specifieke categorie onder artikel 3a lid 3 met GoDrone missieplan en RT-contact."
                     ),
                 },
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
             })
 
-        # B. Laagvlieggebieden & Laagvliegroutes (uitsluitend ED-318 groep 2.*)
-        elif aid.startswith("nl:uas:zones:ed318:2."):
+        # B. Laagvlieggebieden & Laagvliegroutes (ED-318 groep 2.* én overige laagvliegcorridors)
+        elif aid.startswith("nl:uas:zones:ed318:2.") or aid.startswith("LFR_"):
             luchtruim_out.append({
                 "type": "Feature",
                 "properties": {
                     "id": aid,
                     "naam": name,
                     "type": "GLV_LOW_FLY",
-                    "categorie": "Laagvlieggebied Bemand Luchtverkeer (ED-318)",
+                    "categorie": "Laagvliegroute / -gebied Bemand Luchtverkeer",
                     "status_active": "caution",
                     "status_inactive": "free",
                     "max_height_active_m": 30,
                     "max_height_inactive_m": 120,
-                    # De officiële ED-318-zone (GoDrone) bevat GEEN gebruikstijden: de beperking geldt
-                    # volgens de bron permanent. Daarom H24 i.p.v. een eigen aangenomen weekschema.
+                    "forbidden_for_a3": True,
                     "schedule": "H24",
-                    "bron": "GoDrone / LVNL ED-318 geozone (Ministerie van IenW)",
+                    "bron": "GoDrone / LVNL geozone (Ministerie van IenW)",
                     "mini2se_toelichting": (
-                        f"Laagvlieggebied ({name}): In de Open Categorie A1/A2 is vliegen hier toegestaan tot maximaal 30 meter boven de grond; A3 is hier niet toegestaan. "
-                        "De officiële geozone vermeldt geen gebruikstijden, dus deze beperking geldt altijd (ook 's avonds en in het weekend). "
-                        "Let op plotseling laagvliegende militaire of civiele helikopters/vliegtuigen."
+                        f"Laagvliegroute / -gebied ({name}): In Open Categorie A1 en A2 toegestaan tot maximaal 30 meter boven de grond; "
+                        "in Open Categorie A3 is vliegen hier VERBODEN. Let altijd op plotseling laagvliegende helikopters of vliegtuigen."
                     ),
                 },
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
@@ -362,7 +364,7 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 "geometry": preserve_full_geometry(feat["geometry"], precision=5),
             })
 
-    # Verwerk Subtiele Waarschuwingszones (Zweefvliegen, Modelvliegen/UAV, Parachute, Paragliding)
+    # Verwerk Subtiele Waarschuwingszones (Zweefvliegen, Modelvliegen/UAV, Paragliding)
     for key, feat in sorted(risk_features.items()):
         p = feat.get("properties") or {}
         name = str(p.get("name") or "Luchtactiviteit").strip()
@@ -401,7 +403,7 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
             "geometry": preserve_full_geometry(feat["geometry"], precision=5),
         })
 
-    # Verwerk Live NOTAMs & TFR's
+    # Verwerk Live Nederlandse NOTAMs & TFR's (veiligheidshalve allemaal als no-go / 0m)
     notams_out: List[Dict[str, Any]] = []
     for notam_id, feat in sorted(notam_features.items()):
         p = feat.get("properties") or {}
@@ -409,8 +411,6 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
         dcat = str(p.get("detailedCategory") or "")
         is_tfr = dcat == "class:tfr"
         op_from = p.get("operationalFrom") or "2025-01-01T00:00:00Z"
-        # Geen eindtijd bekend -> markeer als doorlopend (2099) zodat de app dit niet
-        # verwart met een echte eindtijd in 2027.
         op_to = p.get("operationalTo") or "2099-12-31T23:59:59Z"
 
         disp = p.get("display") or {}
@@ -427,13 +427,13 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 "notam_code": notam_id,
                 "naam": name,
                 "type": "TGB_NOTAM" if is_tfr else "NAV_WARNING_NOTAM",
-                "status": "forbidden" if is_tfr else "caution",
-                "max_height_m": 0 if is_tfr else 120,
+                "status": "forbidden",
+                "max_height_m": 0,
                 "valid_from": op_from,
                 "valid_to": op_to,
                 "mini2se_toelichting": (
                     f"{'Tijdelijk Gebied met Beperkingen (TFR / No-Fly NOTAM)' if is_tfr else 'Tijdelijke Navigatiewaarschuwing (NOTAM)'} "
-                    f"[{notam_id}]: {full_text or name}"
+                    f"[{notam_id}]: {full_text or name} — Uit veiligheidsoogpunt gemarkeerd als no-go (0m)."
                 ),
             },
             "geometry": preserve_full_geometry(feat["geometry"], precision=5),
@@ -451,7 +451,7 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
             False,
         )
 
-    logger.info("GoDrone ED-318 geozones + risicogebieden opgehaald: %d luchtruimzones, %d live NOTAMs", len(luchtruim_out), len(notams_out))
+    logger.info("GoDrone ED-318 geozones + corridors + risicogebieden opgehaald: %d luchtruimzones, %d live NL NOTAMs", len(luchtruim_out), len(notams_out))
     return (
         {"type": "FeatureCollection", "name": "luchtruim_mini2se", "features": luchtruim_out},
         {"type": "FeatureCollection", "name": "notams_actueel", "features": notams_out},
@@ -497,8 +497,6 @@ def enrich_natura2000() -> Tuple[Dict[str, Any], bool]:
     raw_n2000 = fetch_json_url(PDOK_NATURA2000_WFS)
     fresh = bool(raw_n2000 and raw_n2000.get("features"))
     if not fresh:
-        # Geen verse PDOK-data: publiceer de vorige dataset ongewijzigd (geen herverrijking,
-        # geen nieuwe 'last_success'-tijd) zodat oude informatie niet verser lijkt dan ze is.
         logger.warning("PDOK Natura 2000 WFS niet bereikbaar; behoud bestaande natura2000_slim.geojson.")
         return load_local_json(target_path), False
 
@@ -599,7 +597,6 @@ def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
     if not raw or not raw.get("features"):
         return []
 
-    # Bekende Nederlandse Nationale Parken (te onderscheiden van bredere Natura 2000-gebieden)
     np_names = {
         "de hoge veluwe", "veluwezoom", "utrechtse heuvelrug", "zuid-kennemerland",
         "de biesbosch", "sallandse heuvelrug", "dwingelderveld", "de groote peel",
@@ -608,7 +605,6 @@ def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
         "oosterschelde", "zoommeer", "loonse en drunense duinen", "nieuw land", "van het huis"
     }
 
-    # Nationale Parken met een expliciet parkbreed opstijg- en vliegverbod in de toegangsvoorwaarden
     strict_forbidden_nps = {
         "de hoge veluwe", "veluwezoom", "de biesbosch", "zuid-kennemerland", "nieuw land"
     }
@@ -654,7 +650,6 @@ def fetch_nationale_parken_pdok() -> List[Dict[str, Any]]:
 
 def fetch_hoogspanning_osm() -> Dict[str, Any]:
     """Haalt Nederlandse hoogspanningslijnen (power=line) op uit OpenStreetMap via 6 kleine tegels."""
-    import urllib.parse
     tiles = [
         (50.7, 51.7, 3.3, 5.4),
         (50.7, 51.7, 5.4, 7.3),
@@ -714,30 +709,16 @@ def main() -> None:
 
     luchtruim_fc, notams_fc, godrone_ok = fetch_godrone_luchtruim_and_notams()
     n2000_fc, n2000_ok = enrich_natura2000()
-    # Stiltegebieden zijn geen luchtvaartwet-no-fly-zones en staan ook niet op GoDrone;
-    # we houden het bestand leeg zodat gebieden zoals Eemland of Kockengen niet onterecht rood kleuren.
     stilte_fc = {"type": "FeatureCollection", "name": "stiltegebieden", "features": []}
 
-    # 4. Nationale Parken (o.a. De Hoge Veluwe, Veluwezoom, Utrechtse Heuvelrug, Zuid-Kennemerland) uit PDOK CDDA.
-    #    Alleen toevoegen aan een VERSE GoDrone-dataset (de cache bevat ze al). Faalt PDOK, dan
-    #    nemen we de nationale parken uit de vorige dataset over i.p.v. ze stilletjes te laten vallen.
+    # Nationale Parken zijn tijdelijk gepauzeerd totdat de grondeigenaren-laag is geïmplementeerd.
     warnings: List[str] = []
-    if godrone_ok:
-        np_features = fetch_nationale_parken_pdok()
-        if not np_features:
-            prev_lr = load_local_json(DATA_DIR / "luchtruim_mini2se.geojson")
-            np_features = [
-                f for f in prev_lr.get("features", [])
-                if (f.get("properties") or {}).get("type") == "NATIONAL_PARK"
-            ]
-            warnings.append("PDOK Nationale Parken niet bereikbaar; vorige versie behouden.")
-        luchtruim_fc["features"].extend(np_features)
-    else:
+    if not godrone_ok:
         warnings.append("GoDrone (luchtruim + NOTAMs) niet volledig opgehaald; vorige complete dataset behouden.")
     if not n2000_ok:
         warnings.append("PDOK Natura 2000 niet bereikbaar; vorige dataset behouden.")
 
-    # 5. Hoogspanningslijnen (statisch bestand in /data/hoogspanning.geojson, geen Overpass-calls meer in CI)
+    # Hoogspanningslijnen (statisch bestand in /data/hoogspanning.geojson, geen Overpass-calls in CI)
     power_path = DATA_DIR / "hoogspanning.geojson"
     power_fc = load_local_json(power_path)
 
@@ -753,7 +734,6 @@ def main() -> None:
         prev = prev_sources.get(key) or {}
         has_data = bool(fc.get("features"))
         return {
-            # ok = nu vers opgehaald | cached = bron faalde, vorige data gepubliceerd | error = geen data
             "status": "ok" if ok else ("cached" if has_data else "error"),
             "last_attempt": now_iso,
             "last_success": now_iso if ok else prev.get("last_success"),
@@ -766,7 +746,6 @@ def main() -> None:
         "natura2000": source_entry("natura2000", n2000_ok, n2000_fc),
     }
     for w in warnings:
-        # Verschijnt als gele annotatie in de GitHub Actions-run
         print(f"::warning::{w}")
 
     meta_doc = {
