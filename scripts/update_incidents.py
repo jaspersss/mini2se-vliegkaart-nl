@@ -70,16 +70,26 @@ CATEGORIES: Dict[str, Dict[str, Any]] = {
 BIG_FIRE_RADIUS_M = 4500
 BRANDMEESTER_TTL_MINUTES = 90
 
-RE_MMT = re.compile(r"\b(lifeliner|mmt|traumaheli)\b", re.I)
+RE_MMT = re.compile(r"\b(lifeliner|ll\s*[1-4]|mmt|traumaheli)\b", re.I)
 RE_GRIP_START = re.compile(r"\bgrip\s*[1-4]\b", re.I)
 RE_GRIP_END = re.compile(r"\b(einde\s*grip|grip\s*0|afschaling\s*grip)\b", re.I)
 RE_NATUURBRAND = re.compile(
-    r"\b(natuurbrand|bosbrand|heidebrand|duinbrand|brand\s+(natuur|bos|heide|duin|riet))\b", re.I
+    r"\b(natuurbrand|bosbrand|heidebrand|duinbrand|(?:brand|br)\s*(?:\([^)]+\)\s*)?(?:natuur|bos|heide|duin|riet))\b",
+    re.I,
 )
 RE_BIG_FIRE = re.compile(r"\b(middel\w*|grote|zeer\s*grote|grip)\b", re.I)
 RE_BRANDMEESTER = re.compile(r"\bbrand\s*meester\b", re.I)
 RE_DRONE = re.compile(
-    r"\b(inzet\s*drone|droneteam|drone\s*team|team\s*digitale\s*verkenning|tdv|uas)\b", re.I
+    r"\b(inzet\s*drone|droneteam|drone\s*team|team\s*digitale\s*verkenning|tdv|uas|rpas)\b",
+    re.I,
+)
+
+RE_HMP = re.compile(r"\b(?:[LR]i?|Links|Rechts)?\s*\d+[.,]\d+\b", re.I)
+RE_PREFIX_NOISE = re.compile(
+    r"^(?:[AP]\s*\d+\s*)?(?:\([^)]+\)\s*)*(?:BNH-\d+\s*)?"
+    r"(?:(?:Politie|Brandweer|Ambulance|AMBU(?:\s+\d+)?|Lifeliner|LL\s*[1-4]|MMT)\s+)?"
+    r"(?:(?:naar|op|bij|nabij|langs|aan)\s+)?",
+    re.I,
 )
 BLOCKED_WORDS = ("meldkamer", "brandweerkazerne", "ambulancepost")
 
@@ -184,20 +194,31 @@ def classify(text: str) -> List[str]:
 
 
 def extract_street_place(desc: str) -> Optional[Tuple[str, str]]:
-    """Herkent onder meer: 'Politie naar Provincialeweg in Ingen voor ongeval'."""
+    """Herkent zowel 'Politie naar X in Y' als 'BR natuur (heide) X in Y' en snelweg-hectometerpalen."""
     description = re.split(r"\s+voor\s+", desc, maxsplit=1, flags=re.I)[0].strip()
     if " in " not in description.lower():
         return None
+
     # Splits op de laatste ' in ' zodat plaatsnamen met meerdere woorden behouden blijven.
     match = re.match(r"^(.*)\s+in\s+(.+)$", description, re.I)
     if not match:
         return None
     left, place = match.group(1).strip(), match.group(2).strip()
-    street_match = re.match(r"^.*?\b(?:naar|op|bij|nabij|langs|aan)\s+(.+)$", left, re.I)
-    if not street_match:
-        return None
-    street = street_match.group(1).strip(" ,.")
-    place = place.strip(" ,.")
+
+    # Strip eventuele capcodes/dienstcodes achteraan de plaatsnaam (bijv. 'Soest 094131')
+    place = re.sub(r"\s+\d{5,7}$", "", place).strip(" ,.")
+
+    # Verwijder voorlooptekst (prio, eenheid, meldingssoort of voorzetsel)
+    street = RE_PREFIX_NOISE.sub("", left)
+    street = re.sub(
+        r"^(?:(?:zeer\s+grote|grote|middel)?\s*(?:natuurbrand|bosbrand|heidebrand|brand|br)|grip\s*[1-4])\s*(?:\([^)]+\)\s*)?",
+        "",
+        street,
+        flags=re.I,
+    )
+    # Strip hectometerpalen bijv. 'A1 Re 42,3' -> 'A1'
+    street = RE_HMP.sub("", street).strip(" ,.-")
+
     if not street or not place or street.casefold() == place.casefold():
         return None
     if any(word in street.casefold() for word in BLOCKED_WORDS):
@@ -225,8 +246,6 @@ def pdok_geocode(street: str, place: str) -> Optional[Tuple[float, float]]:
         if document.get("type") != "weg":
             continue
         if str(document.get("woonplaatsnaam", "")).casefold() != place.casefold():
-            continue
-        if str(document.get("straatnaam", "")).strip().casefold() != street.strip().casefold():
             continue
         match = re.fullmatch(r"POINT\(([-\d.]+) ([-\d.]+)\)", str(document.get("centroide_ll", "")))
         if match:
@@ -376,8 +395,12 @@ def find_incident(
 
 
 def upsert_incident(
-    state: Dict[str, Any], cat: str, lat: float, lon: float,
-    msg_time: datetime, now: datetime,
+    state: Dict[str, Any],
+    cat: str,
+    lat: float,
+    lon: float,
+    msg_time: datetime,
+    now: datetime,
 ) -> Dict[str, Any]:
     incident = find_incident(state, cat, lat, lon, msg_time, now)
     if incident is None:
@@ -432,8 +455,12 @@ def process_items(
     geocode: Callable[[str, str], Optional[Tuple[float, float]]] = pdok_geocode,
 ) -> Dict[str, int]:
     metrics = {
-        "received": len(items), "relevant": 0, "geocoded": 0,
-        "unlocated": 0, "retry_scheduled": 0, "processed": 0,
+        "received": len(items),
+        "relevant": 0,
+        "geocoded": 0,
+        "unlocated": 0,
+        "retry_scheduled": 0,
+        "processed": 0,
     }
 
     for item in items:
@@ -533,12 +560,14 @@ def process_items(
     # normaliter ook niet meer beschikbaar.
     retry_cutoff = now - timedelta(hours=2)
     state["retry"] = {
-        key: value for key, value in state["retry"].items()
+        key: value
+        for key, value in state["retry"].items()
         if parse_iso(value.get("updated_at", iso(now))) > retry_cutoff
     }
     seen_cutoff = now - timedelta(days=2)
     state["seen"] = {
-        key: value for key, value in state["seen"].items()
+        key: value
+        for key, value in state["seen"].items()
         if isinstance(value, dict) and parse_iso(value.get("at", iso(now))) > seen_cutoff
     }
     return metrics
@@ -593,8 +622,12 @@ def main() -> None:
     raw = fetch_url(FEED_URL)
     feed_ok = False
     metrics = {
-        "received": 0, "relevant": 0, "geocoded": 0,
-        "unlocated": 0, "retry_scheduled": 0, "processed": 0,
+        "received": 0,
+        "relevant": 0,
+        "geocoded": 0,
+        "unlocated": 0,
+        "retry_scheduled": 0,
+        "processed": 0,
     }
 
     if raw is not None:
@@ -626,10 +659,16 @@ def main() -> None:
     LOG.info(
         "Klaar: %d actieve incidenten | feed_ok=%s | ontvangen=%d | relevant=%d | "
         "geocodeerd=%d | retry=%d | niet_geplaatst=%d",
-        len(incidents), feed_ok, metrics["received"], metrics["relevant"],
-        metrics["geocoded"], metrics["retry_scheduled"], metrics["unlocated"],
+        len(incidents),
+        feed_ok,
+        metrics["received"],
+        metrics["relevant"],
+        metrics["geocoded"],
+        metrics["retry_scheduled"],
+        metrics["unlocated"],
     )
 
 
 if __name__ == "__main__":
     main()
+```[cite: 1]
