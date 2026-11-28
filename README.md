@@ -24,7 +24,12 @@ Bestaande dronekaarten tonen vaak algemene meldingen die per dronecategorie vers
    - Draait elk uur via GitHub Actions en haalt pas nieuwe GoDrone-data over als **alle 12 geografische tegels** succesvol zijn opgehaald.
    - Houdt per databron (`godrone_luchtruim`, `godrone_notams`, `natura2000`) de status (`ok`, `cached`, `error`) en `last_success` bij. Bij verouderde NOTAM-data (>3 uur) toont de app automatisch een waarschuwing.
    - Draait vóór elke publicatie automatisch de regressietests in [`tests/test_locations.py`](./tests/test_locations.py).
-3. **Mobile-First Veld-Interface:**
+3. **Actieve hulpverlening (P2000, live laag):**
+   - [`scripts/update_incidents.py`](./scripts/update_incidents.py) leest elke 5 minuten de publieke [Alarmeringen.nl RSS-feed](https://alarmeringen.nl/feeds/all.rss) en herkent traumaheli (MMT), GRIP 1-4, natuurbrand en inzet van hulpdienst-drones (2 km, bij opgeschaalde natuurbrand 4,5 km), met per categorie een eigen vervaltijd (TTL).
+   - De feed bevat geen coördinaten: locaties worden via PDOK Locatieserver bepaald. Alleen exacte straat-in-plaats-treffers worden geaccepteerd; ontbreekt de straat, dan wordt de melding bewust overgeslagen (geen valse cirkel op een plaatsmiddelpunt).
+   - Privacy: er worden geen straatnamen of ruwe P2000-teksten opgeslagen of getoond; coördinaten worden op ~100m afgerond. Het resultaat staat op de branch `incidents-data` (1 commit, wordt telkens overschreven) zodat `main` niet volloopt.
+   - Aan/uit te zetten via de legenda (geldt voor kaart én analyse).
+4. **Mobile-First Veld-Interface:**
    - **Sticky Top Status Banner** met maximale vlieghoogte en live daglicht-aftelklok (`SunCalc.js`).
    - **~500m VLOS-richtlijncirkel** (`Turf.js`) rond je live GPS-positie of het kaart-kruisdraad.
    - **Tijd-simulatie balk** (`Nu`, `+1 uur`, `+3 uur`, `Morgen 10:00` + tijdslider) om vooruit te kijken.

@@ -322,6 +322,9 @@
     .swatch-red { background: rgba(239, 68, 68, 0.65); border: 1.5px solid #ef4444; }
     .swatch-orange { background: rgba(245, 158, 11, 0.55); border: 1.5px solid #f59e0b; }
     .swatch-green { background: rgba(16, 185, 129, 0.45); border: 1.5px dashed #10b981; }
+    .swatch-incident { background: rgba(234, 88, 12, 0.35); border: 1.5px solid #ea580c; border-radius: 50%; }
+    .legend-toggle { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 10.5px; color: #94a3b8; cursor: pointer; white-space: nowrap; }
+    .legend-toggle input { accent-color: #ea580c; margin: 0; }
     .swatch-vlos { width: 11px; height: 11px; border-radius: 50%; border: 1.5px dashed #38bdf8; }
 
     /* Details Popup Modal (opened by clicking top banner) */
@@ -564,6 +567,8 @@
       <div class="legend-item"><span class="swatch swatch-red"></span> Verboden: CTR-zone 1/2, militaire CTR, beveiligd gebied, NOTAM-verbod, Natura 2000 mét droneverbod</div>
       <div class="legend-item"><span class="swatch swatch-orange"></span> Let op / voorwaarden: laagvlieggebied (max 30m), Natura 2000 (zorgplicht), nationaal park, NOTAM</div>
       <div class="legend-item"><span class="swatch swatch-green"></span> Geen kleur: geen beperking gevonden (o.a. CTR-zone 3 buitenring, tot 120m)</div>
+      <div class="legend-item"><span class="swatch swatch-incident"></span> Actieve hulpverlening (traumaheli, GRIP, natuurbrand, drone): 2–4,5 km
+        <label class="legend-toggle"><input type="checkbox" id="toggleIncidents"> aan</label></div>
       <div class="legend-item"><span class="swatch swatch-vlos"></span> ~500m-cirkel (richtlijn, VLOS blijft leidend)</div>
     </div>
   </aside>
@@ -664,6 +669,7 @@
 
     const savedDroneId = getPref("mini2se_selected_drone_id", "mini2se");
     const savedBasemap = getPref("mini2se_basemap_pdok", "true");
+    const savedShowIncidents = getPref("mini2se_show_incidents", "true");
 
     const state = {
       selectedDrone: DRONE_PROFILES.find((d) => d.id === savedDroneId) || DRONE_PROFILES[0],
@@ -681,7 +687,9 @@
       watchId: null,
       simTimeMode: "now",
       simTimestamp: new Date(),
-      usePdokBasemap: savedBasemap === "true"
+      usePdokBasemap: savedBasemap === "true",
+      showIncidents: savedShowIncidents === "true",
+      incidentData: null // { generated_at, last_feed_success, incidents: [] } uit branch incidents-data
     };
 
     // Zet direct de opgeslagen drone-naam in de bovenbalk (voordat de kaart klaar is met laden)
@@ -810,6 +818,56 @@
         return `Laatste succesvolle NOTAM-update: ${ageTxt} geleden (status: ${statusTxt}). Nieuwe of gewijzigde NOTAM's kunnen ontbreken — controleer voor vertrek GoDrone.`;
       }
       return null;
+    }
+
+    /**
+     * Actieve hulpverleningsincidenten (P2000, via GitHub Action -> branch incidents-data).
+     * Bevat bewust géén straatnaam of ruwe P2000-tekst (voorkomt ramptoerisme).
+     */
+    const INCIDENTS_URL = "https://raw.githubusercontent.com/jaspersss/mini2se-vliegkaart-nl/incidents-data/incidents.json";
+    const INCIDENT_MAX_FEED_AGE_HOURS = 2;
+    const INCIDENT_INFO = {
+      mmt: "Actieve inzet van een traumahelikopter (MMT).",
+      grip: "Actief GRIP-incident met meerdere hulpdiensten.",
+      natuurbrand: "Actieve natuurbrand; blus- en verkenningshelikopters kunnen worden ingezet.",
+      drone: "Actieve inzet van een drone van de hulpdiensten."
+    };
+    function getActiveIncidents(dateObj) {
+      const d = state.incidentData;
+      if (!state.showIncidents || !d || !Array.isArray(d.incidents)) return [];
+      return d.incidents.filter((i) => Date.parse(i.expires_at) > dateObj.getTime());
+    }
+    function formatAmsTime(isoStr) {
+      return new Date(isoStr).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" });
+    }
+    function buildIncidentCirclesGeoJSON(dateObj) {
+      return {
+        type: "FeatureCollection",
+        features: getActiveIncidents(dateObj).map((i) => ({
+          ...turf.circle([i.lon, i.lat], i.radius_m / 1000, { steps: 64, units: "kilometers" }),
+          properties: { id: i.id, category: i.category, radius_m: i.radius_m }
+        }))
+      };
+    }
+    function getIncidentFreshnessWarning() {
+      const d = state.incidentData;
+      if (!state.showIncidents || !d || !d.last_feed_success) return null;
+      const ageH = (Date.now() - Date.parse(d.last_feed_success)) / 3600000;
+      if (ageH > INCIDENT_MAX_FEED_AGE_HOURS) {
+        return `Incidentgegevens (hulpverlening) zijn voor het laatst ${Math.floor(ageH)} uur geleden bijgewerkt. Actieve inzet van hulpdiensten kan ontbreken.`;
+      }
+      return null;
+    }
+    async function loadIncidents() {
+      try {
+        const res = await fetch(`${INCIDENTS_URL}?t=${Math.floor(Date.now() / 60000)}`, { cache: "no-store" });
+        if (res.ok) state.incidentData = await res.json();
+      } catch (_) {
+        // Offline of laag nog niet gepubliceerd: gewoon geen incidentlaag tonen
+      }
+      if (map.getSource && map.getSource("incidents-source")) {
+        map.getSource("incidents-source").setData(buildIncidentCirclesGeoJSON(state.simTimestamp));
+      }
     }
 
     /**
@@ -1036,6 +1094,22 @@
         }
       }
 
+      // 5b. Actieve hulpverlening (traumaheli, GRIP, natuurbrand, drone hulpdiensten)
+      for (const inc of getActiveIncidents(dateObj)) {
+        const distKm = turf.distance(pt, turf.point([inc.lon, inc.lat]), { units: "kilometers" });
+        if (distKm * 1000 > inc.radius_m) continue;
+        escalateStatus("caution");
+        const km = String(inc.radius_m / 1000);
+        findings.push({
+          status: "caution",
+          title: `Actieve Hulpverlening: ${escapeHtml(inc.label)}`,
+          tag: `INCIDENT • ${km}KM`,
+          body: `<strong>Status:</strong> ${INCIDENT_INFO[inc.category] || "Actieve inzet van hulpdiensten."} ` +
+            `Houd afstand en geef het luchtruim volledig vrij voor trauma-, politie- of blushelikopters en drones van hulpdiensten.<br>` +
+            `<strong>Verwachte eindtijd:</strong> Actief tot ca. ${formatAmsTime(inc.expires_at)}`
+        });
+      }
+
       // 6. Standaard Open Categorie-status als geen enkele restrictieve laag geraakt is
       if (findings.length === 0) {
         findings.push({
@@ -1077,6 +1151,11 @@
       }
 
       // 9. Actualiteit van de onderliggende data (NOTAM's / luchtruim)
+      const incFresh = getIncidentFreshnessWarning();
+      if (incFresh) {
+        escalateStatus("caution");
+        findings.push({ status: "caution", title: "⚠️ Incidentdata mogelijk verouderd", tag: "CONTROLEER", body: incFresh });
+      }
       const freshness = getDataFreshnessWarning();
       if (freshness) {
         escalateStatus("caution");
@@ -1245,6 +1324,11 @@
       map.addSource("zones-source", {
         type: "geojson",
         data: buildRenderableZonesGeoJSON(state.simTimestamp)
+      });
+
+      map.addSource("incidents-source", {
+        type: "geojson",
+        data: buildIncidentCirclesGeoJSON(state.simTimestamp)
       });
 
       map.addSource("vlos-source", {
@@ -1434,6 +1518,22 @@
         }
       });
 
+      // Actieve hulpverleningsincidenten (semi-transparante oranje cirkel, zonder tekst/adres)
+      map.addLayer({
+        id: "incidents-fill",
+        type: "fill",
+        source: "incidents-source",
+        layout: { visibility: state.showIncidents ? "visible" : "none" },
+        paint: { "fill-color": "#ea580c", "fill-opacity": 0.2 }
+      });
+      map.addLayer({
+        id: "incidents-line",
+        type: "line",
+        source: "incidents-source",
+        layout: { visibility: state.showIncidents ? "visible" : "none" },
+        paint: { "line-color": "#c2410c", "line-width": 2.5 }
+      });
+
       // 500m VLOS Cirkel Vulling + Gestippelde Rand
       map.addLayer({
         id: "vlos-fill",
@@ -1462,6 +1562,7 @@
 
       // Laad externe GeoJSON-bestanden uit /data/ (indien aanwezig)
       await loadExternalGeoJSONData();
+      await loadIncidents();
       refreshEvaluationAndUI();
 
       // Start automatisch live GPS-tracking (koppelt alleen bij de eerste fix)
@@ -1732,6 +1833,9 @@
       if (map.getSource("zones-source")) {
         map.getSource("zones-source").setData(buildRenderableZonesGeoJSON(state.simTimestamp));
       }
+      if (map.getSource("incidents-source")) {
+        map.getSource("incidents-source").setData(buildIncidentCirclesGeoJSON(state.simTimestamp));
+      }
     }
 
     function updateLocationModeIndicator() {
@@ -1803,6 +1907,20 @@
      *************************************************************************/
     document.getElementById("legendBox").addEventListener("click", () => {
       document.getElementById("legendBox").classList.toggle("expanded");
+    });
+
+    // Kaartlaag hulpverlening aan/uit (geldt voor kaart én analyse, zodat beide hetzelfde tonen)
+    const incidentsToggle = document.getElementById("toggleIncidents");
+    incidentsToggle.checked = state.showIncidents;
+    incidentsToggle.parentElement.addEventListener("click", (e) => e.stopPropagation());
+    incidentsToggle.addEventListener("change", () => {
+      state.showIncidents = incidentsToggle.checked;
+      setPref("mini2se_show_incidents", String(state.showIncidents));
+      const vis = state.showIncidents ? "visible" : "none";
+      if (map.getLayer("incidents-fill")) map.setLayoutProperty("incidents-fill", "visibility", vis);
+      if (map.getLayer("incidents-line")) map.setLayoutProperty("incidents-line", "visibility", vis);
+      if (map.getSource("incidents-source")) map.getSource("incidents-source").setData(buildIncidentCirclesGeoJSON(state.simTimestamp));
+      refreshEvaluationAndUI();
     });
 
     document.getElementById("btnToggleBasemap").addEventListener("click", () => {
@@ -2238,6 +2356,9 @@
       } catch (_) {}
     }
     setInterval(reloadDataAndRefresh, 15 * 60 * 1000);
+
+    // Incidenten wijzigen snel: elke minuut opnieuw ophalen (alleen een klein JSON-bestand)
+    setInterval(async () => { await loadIncidents(); refreshEvaluationAndUI(); }, 60 * 1000);
     let lastVisibleReload = Date.now();
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && Date.now() - lastVisibleReload > 5 * 60 * 1000) {

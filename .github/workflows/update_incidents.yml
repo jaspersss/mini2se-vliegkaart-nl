@@ -1,0 +1,59 @@
+name: Update Hulpverlening Incidenten (P2000)
+
+on:
+  schedule:
+    # Elke 5 minuten (GitHub-minimum). De RSS-feed bevat ~38 min historie, dus gemiste runs zijn op te vangen.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_incidents.py"
+      - "tests/test_incidents.py"
+      - ".github/workflows/update_incidents.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-incidents
+  cancel-in-progress: false
+
+jobs:
+  update-incidents:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Unit tests incidentlogica
+        run: python tests/test_incidents.py
+
+      - name: Haal vorige state op (branch incidents-data)
+        run: |
+          mkdir -p "$RUNNER_TEMP/inc"
+          if git ls-remote --exit-code --heads origin incidents-data >/dev/null 2>&1; then
+            git fetch --depth=1 origin incidents-data
+            git show FETCH_HEAD:state.json > "$RUNNER_TEMP/inc/state.json" || true
+            git show FETCH_HEAD:incidents.json > "$RUNNER_TEMP/inc/incidents.json" || true
+          fi
+
+      - name: Verwerk P2000-feed
+        run: python scripts/update_incidents.py --dir "$RUNNER_TEMP/inc"
+
+      - name: Publiceer naar branch incidents-data (1 commit, geen historie)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP/inc"
+          git init -q
+          git checkout -q -b incidents-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json incidents.json
+          git commit -q -m "chore(incidents): update $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" incidents-data
