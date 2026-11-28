@@ -218,8 +218,13 @@ def fetch_godrone_luchtruim_and_notams() -> Tuple[Dict[str, Any], Dict[str, Any]
                 notam_id = str(p.get("notamId") or aid)
                 notam_features[notam_id] = feat
 
-            # 3. Civiele / overige Laagvliegroutes & -gebieden (o.a. VFR-corridors bij Schiphol/Loenersloot)
+            # 3. Civiele Laagvliegroutes op grondniveau (zoals corridor Amstelveen - Loenersloot),
+            #    exclusief hogere VFR-aanvliegroutes boven Amsterdam die pas op 300-1000 ft beginnen.
             elif "low_fly" in dcat.lower() or "laagvlieg" in name.lower():
+                remarks_blob = json.dumps(p.get("display") or {}).upper()
+                # Hogere VFR-routes naar Schiphol hebben een ondergrens in FT/AMSL (bijv. 300 FT / 1000 FT)
+                if re.search(r"\b(?:[2-9]\d{2}|1\d{3})\s*FT\b", remarks_blob):
+                    continue
                 ed318_features[f"LFR_{aid}"] = feat
 
             # 4. Waarschuwingsgebieden (Zweefvliegen, Modelvliegen/UAV, Paragliding):
