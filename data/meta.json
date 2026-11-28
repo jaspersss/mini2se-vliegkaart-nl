@@ -17,7 +17,7 @@
     },
     "notams_actueel.geojson": {
       "features": 109,
-      "hash": "51d3cc9429776376",
+      "hash": "fe3cc0b3f8e8fa37",
       "size_kb": 148.4
     },
     "stiltegebieden.geojson": {
@@ -29,23 +29,23 @@
   "sources": {
     "godrone_luchtruim": {
       "count": 948,
-      "last_attempt": "2026-11-28T03:53:11Z",
-      "last_success": "2026-11-28T03:53:11Z",
+      "last_attempt": "2026-11-28T09:28:34Z",
+      "last_success": "2026-11-28T09:28:34Z",
       "status": "ok"
     },
     "godrone_notams": {
       "count": 109,
-      "last_attempt": "2026-11-28T03:53:11Z",
-      "last_success": "2026-11-28T03:53:11Z",
+      "last_attempt": "2026-11-28T09:28:34Z",
+      "last_success": "2026-11-28T09:28:34Z",
       "status": "ok"
     },
     "natura2000": {
       "count": 209,
-      "last_attempt": "2026-11-28T03:53:11Z",
-      "last_success": "2026-11-28T03:53:11Z",
+      "last_attempt": "2026-11-28T09:28:34Z",
+      "last_success": "2026-11-28T09:28:34Z",
       "status": "ok"
     }
   },
-  "updated_at": "2026-11-28T03:53:11Z",
+  "updated_at": "2026-11-28T09:28:34Z",
   "warnings": []
 }
