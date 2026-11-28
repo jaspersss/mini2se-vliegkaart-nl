@@ -536,9 +536,10 @@ def enrich_natura2000() -> Tuple[Dict[str, Any], bool]:
         status = override.get("status", existing_status)
 
         bescherming = str(props.get("beschermin") or "").strip()
-        besluit_txt = str(props.get("status") or "").strip()
         staatscour = str(props.get("staatscour") or "").strip()
-        bron_info = f" [{besluit_txt}, Stcrt. {staatscour}]" if ("besluit" in besluit_txt.lower() and staatscour) else ""
+        sc_clean = re.sub(r"[^0-9-]", "", staatscour)
+        auto_sc_url = f"https://zoek.officielebekendmakingen.nl/stcrt-{sc_clean}.html" if sc_clean else None
+        staatscourant_url = override.get("staatscourant_url") or auto_sc_url
 
         water_keywords = (
             "zee", "kustzone", "voordelta", "delta", "estuarium", "schel", "grevelingen",
@@ -548,28 +549,29 @@ def enrich_natura2000() -> Tuple[Dict[str, Any], bool]:
         )
         is_water_area = any(k in str(naam).lower() for k in water_keywords)
 
-        if override.get("mini2se_toelichting"):
-            toelichting = f"{override['mini2se_toelichting']}{bron_info}"
-        elif is_water_area:
-            toelichting = (
-                f"<strong>Vliegen:</strong> Ja, toegestaan boven open water (geen algemeen droneverbod in het Natura 2000-besluit van {naam}).<br>"
-                "<strong>Opstijgen:</strong> Toegestaan vanaf openbare stranden, dijken en kades (of vanaf een boot); niet vanaf afgesloten vogelbroedstranden.<br>"
-                f"<strong>Afstand houden:</strong> Min. 100–150m van rustende watervogels, broedkolonies en zeehonden.{bron_info}"
-            )
-        elif "VR" in bescherming:
-            toelichting = (
-                f"<strong>Vliegen:</strong> Ja, toegestaan (geen vliegverbod in het Natura 2000-besluit van {naam}).<br>"
-                "<strong>Opstijgen:</strong> Alleen vanaf openbare grond/wegen; verboden vanaf terrein van Staatsbosbeheer of Natuurmonumenten.<br>"
-                f"<strong>Afstand houden:</strong> Min. 100m van vogels (extra streng in broedseizoen 15 mrt–15 jul).{bron_info}"
-            )
-        elif bescherming == "HR":
-            toelichting = (
-                f"<strong>Vliegen:</strong> Ja, toegestaan (geen droneverbod in het Natura 2000-besluit van {naam}).<br>"
-                "<strong>Opstijgen:</strong> Alleen vanaf openbare grond/wegen; niet opstijgen vanaf terrein van Staatsbosbeheer of Natuurmonumenten.<br>"
-                f"<strong>Afstand houden:</strong> Houd afstand van wild en verstoor geen dieren.{bron_info}"
-            )
-        else:
-            toelichting = f"{default_advice}{bron_info}"
+        default_rules = overrides_doc.get("_meta", {}).get("default_rules", {})
+        rules = {**default_rules, **(override.get("rules") or {})}
+        if not override.get("rules"):
+            if is_water_area:
+                rules["vliegen"] = f"Toegestaan boven open water (geen algemeen droneverbod in het besluit van {naam})."
+                rules["opstijgen"] = "Toegestaan vanaf openbare stranden, dijken en kades (of vanaf een boot); niet vanaf afgesloten vogelbroedstranden."
+                rules["afstand"] = "Min. 100–150m van rustende watervogels, broedkolonies en zeehonden."
+            elif "VR" in bescherming:
+                rules["vliegen"] = f"Toegestaan (geen vliegverbod in het besluit van {naam}; wel Vogelrichtlijn-soorten aanwezig)."
+                rules["afstand"] = "Min. 100m van vogels (extra streng in broedseizoen 15 mrt–15 jul)."
+            elif bescherming == "HR":
+                rules["vliegen"] = f"Toegestaan (Habitatrichtlijngebied {naam}; geen Vogelrichtlijn-doelen)."
+
+        grondslag = override.get("grondslag") or (
+            f"{bescherming} • Aanwijzingsbesluit (Stcrt. {sc_clean})" if (bescherming and sc_clean) else (bescherming or "Natura 2000-besluit")
+        )
+        toelichting = (
+            f"<strong>Grondslag:</strong> {grondslag}<br>"
+            f"<strong>Vliegen:</strong> {rules.get('vliegen', '')}<br>"
+            f"<strong>Opstijgen:</strong> {rules.get('opstijgen', '')}<br>"
+            f"<strong>Afstand houden:</strong> {rules.get('afstand', '')}<br>"
+            f"<strong>Broedseizoen:</strong> {rules.get('broedseizoen', '15 maart t/m 15 juli')}"
+        )
 
         max_height = 0 if status == "forbidden" else int(override.get("max_height_m", 120))
         direct_url = n2k_url_map.get(str(naam).strip().lower())
@@ -588,6 +590,7 @@ def enrich_natura2000() -> Tuple[Dict[str, Any], bool]:
                 "beheerder": beheerder,
                 "mini2se_toelichting": toelichting,
                 "url": url,
+                "staatscourant_url": staatscourant_url,
             },
             "geometry": preserve_full_geometry(geom_dict, precision=5),
         })

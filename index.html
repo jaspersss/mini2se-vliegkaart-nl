@@ -1065,7 +1065,8 @@
             title: `Natura 2000: ${p.naam || "Natuurgebied"} (#${p.gebiedsnummer || "?"})`,
             tag: isForbidden ? "N2000 VERBOD • 0M" : "N2000 LET OP • ZORGPLICHT",
             body: p.mini2se_toelichting || "Geen expliciet droneverbod in besluit, maar verstoring van fauna is strafbaar. Houd >50-100m afstand van vogels en stijg niet op vanaf terrein van Staatsbosbeheer/Natuurmonumenten zonder toestemming.",
-            url: p.url || "https://www.natura2000.nl/gebieden"
+            url: p.url || "https://www.natura2000.nl/gebieden",
+            staatscourant_url: p.staatscourant_url || null
           });
         }
       }
@@ -1553,9 +1554,9 @@
       sheetContent.innerHTML = findings
         .map((item) => {
           const bodyText = personalizeDroneText(item.body);
-          const linkHtml = item.url
-            ? `<a class="detail-link" href="${item.url}" target="_blank" rel="noopener">🔗 Bekijk officieel Natura 2000-gebiedsprofiel &rarr;</a>`
-            : "";
+          const linkHtml =
+            (item.url ? `<a class="detail-link" href="${item.url}" target="_blank" rel="noopener">🔗 Bekijk officieel Natura 2000-gebiedsprofiel &rarr;</a>` : "") +
+            (item.staatscourant_url ? `<a class="detail-link" style="margin-top:4px;" href="${item.staatscourant_url}" target="_blank" rel="noopener">📜 Aanwijzingsbesluit (Staatscourant) &rarr;</a>` : "");
           return `
             <article class="detail-card card-${item.status}">
               <div class="detail-card-header">
